@@ -1,4 +1,4 @@
-import { Download, LogOut, ShieldCheck, ShieldOff } from 'lucide-react'
+import { Download, LogOut, Monitor, Moon, ShieldCheck, ShieldOff, Sun } from 'lucide-react'
 import QRCode from 'qrcode'
 import { useState, type FormEvent } from 'react'
 import { api, type Account } from '../../api/client'
@@ -6,10 +6,16 @@ import { CopyButton, ErrorText, Field, PasswordField, PasswordStrength, Spinner 
 import { deriveMasterKeys } from '../../crypto/kdf'
 import { rewrapUserKey } from '../../crypto/keys'
 import { errorMessage, useI18n } from '../../i18n'
-import { LOCK_OPTIONS, type Lang, type Prefs } from '../../state/prefs'
+import { LOCK_OPTIONS, type Lang, type Prefs, type Theme } from '../../state/prefs'
 import { masterPasswordProblem, MIN_MASTER_LENGTH } from '../Register'
 
 const SOURCE_URL = 'https://github.com/ghersonmena/passme'
+
+const THEMES: { value: Theme; icon: typeof Sun }[] = [
+  { value: 'system', icon: Monitor },
+  { value: 'light', icon: Sun },
+  { value: 'dark', icon: Moon }
+]
 
 interface Props {
   account: Account
@@ -34,6 +40,23 @@ export function Settings({ account, prefs, onPrefs, onAccountChanged, onLogout }
             <option value="en">English</option>
           </select>
         </label>
+        <div className="inline-field">
+          <span id="theme-label">{t('settings.theme')}</span>
+          <div className="segmented" role="radiogroup" aria-labelledby="theme-label">
+            {THEMES.map(({ value, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={prefs.theme === value}
+                className={prefs.theme === value ? 'on' : ''}
+                onClick={() => onPrefs({ ...prefs, theme: value })}
+              >
+                <Icon size={16} aria-hidden /> {t(`settings.theme.${value}`)}
+              </button>
+            ))}
+          </div>
+        </div>
         <label className="inline-field">
           <span>{t('settings.autoLock')}</span>
           <select

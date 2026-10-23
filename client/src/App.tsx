@@ -3,7 +3,7 @@ import { api, ApiError, type Account, type ServerConfig } from './api/client'
 import { Spinner } from './components/ui'
 import { I18nProvider, useI18n } from './i18n'
 import { useAutoLock } from './state/autolock'
-import { loadPrefs, savePrefs, type Prefs } from './state/prefs'
+import { applyTheme, loadPrefs, savePrefs, type Prefs } from './state/prefs'
 import type { Unlocked } from './state/session'
 import { AuthLayout } from './screens/AuthLayout'
 import { Login } from './screens/Login'
@@ -32,6 +32,8 @@ export function App() {
   useEffect(() => {
     document.documentElement.lang = prefs.lang
   }, [prefs.lang])
+
+  useEffect(() => applyTheme(prefs.theme), [prefs.theme])
 
   return (
     <I18nProvider lang={prefs.lang}>

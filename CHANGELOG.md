@@ -1,5 +1,10 @@
 # Cambios
 
+## v0.1.4
+
+- Tema claro, oscuro o el del sistema, a elegir en Ajustes; la elección se guarda en el dispositivo
+- La barra del navegador y del teléfono toma el color del tema elegido
+
 ## v0.1.3
 
 - Vista rápida en la lista: un ojo para ver la contraseña (o el secreto principal de cada tipo) sin
