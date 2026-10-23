@@ -1,5 +1,10 @@
 # Cambios
 
+## v0.1.1
+
+- Nueva identidad visual: paleta Ciruela en tema claro y oscuro
+- Nuevo logo: la Llave P, en el ícono de la app, la pestaña y la PWA
+
 ## v0.1.0
 
 Primera versión.

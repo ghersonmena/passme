@@ -1,20 +1,19 @@
-/* Estilos base provisionales: la identidad visual de PassMe se definirá más adelante.
-   Todos los colores salen de estas variables para poder cambiar el tema en un solo lugar. */
+/* Paleta Ciruela. Todos los colores salen de estas variables para poder cambiar el tema en un solo lugar. */
 :root {
-  --bg: #f4f6f6;
+  --bg: #f8f5f9;
   --surface: #ffffff;
-  --surface-2: #eef2f2;
-  --border: #d9e0e0;
-  --text: #11201f;
-  --muted: #5b6b6a;
-  --accent: #0f766e;
+  --surface-2: #f0e8f2;
+  --border: #e3d8e6;
+  --text: #22142a;
+  --muted: #6b5c72;
+  --accent: #7c2d92;
   --accent-text: #ffffff;
-  --accent-soft: #d5efec;
+  --accent-soft: #f1e0f5;
   --danger: #b42318;
   --danger-soft: #fde8e6;
   --warning: #8a5a00;
   --warning-soft: #fff3d6;
-  --ok: #157a3c;
+  --ok: #15803d;
   --radius: 12px;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.05);
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -24,20 +23,20 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0b1214;
-    --surface: #131c1e;
-    --surface-2: #1b2629;
-    --border: #2a3739;
-    --text: #e6eeee;
-    --muted: #93a3a3;
-    --accent: #2bb3a6;
-    --accent-text: #04201d;
-    --accent-soft: #123a37;
+    --bg: #120c15;
+    --surface: #1b131f;
+    --surface-2: #261b2b;
+    --border: #382a3e;
+    --text: #f1e7f4;
+    --muted: #b09cb8;
+    --accent: #d58af0;
+    --accent-text: #2a0a35;
+    --accent-soft: #341a3e;
     --danger: #ff8a7a;
     --danger-soft: #3a1714;
     --warning: #f0c060;
     --warning-soft: #33280f;
-    --ok: #5fd08a;
+    --ok: #4ade80;
     --shadow: none;
     color-scheme: dark;
   }

@@ -1,6 +1,6 @@
 // Service worker de PassMe: guarda solo la interfaz (HTML, JS, CSS, íconos) para que la app abra
 // sin red. Las respuestas de /api/ nunca se guardan: ahí viajan los datos cifrados de la bóveda.
-const CACHE = 'passme-shell-v1'
+const CACHE = 'passme-shell-v2'
 const SHELL = ['/', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png']
 
 self.addEventListener('install', (event) => {
