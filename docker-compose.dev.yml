@@ -1,0 +1,16 @@
+# Solo para desarrollo: Postgres en el puerto 5433 (el 5432 suele estar ocupado)
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: passme_dev_db
+    environment:
+      POSTGRES_DB: passme
+      POSTGRES_USER: passme
+      POSTGRES_PASSWORD: passme-dev
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - passme-dev-db:/var/lib/postgresql/data
+
+volumes:
+  passme-dev-db:

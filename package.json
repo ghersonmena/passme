@@ -1,0 +1,22 @@
+{
+  "name": "passme",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Gestor de contraseñas zero-knowledge autoalojado",
+  "license": "AGPL-3.0-only",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev:db": "docker compose -f docker-compose.dev.yml up -d",
+    "dev:server": "npm run dev -w server",
+    "dev:client": "npm run dev -w client",
+    "build": "npm run build -w server && npm run build -w client",
+    "test": "npm test -w client && npm test -w server",
+    "lint": "oxlint server/src client/src"
+  },
+  "devDependencies": {
+    "oxlint": "^1.89.0"
+  }
+}
