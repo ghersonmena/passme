@@ -8,6 +8,7 @@ import { rewrapUserKey } from '../../crypto/keys'
 import { errorMessage, useI18n } from '../../i18n'
 import { LOCK_OPTIONS, type Lang, type Prefs, type Theme } from '../../state/prefs'
 import { masterPasswordProblem, MIN_MASTER_LENGTH } from '../Register'
+import { QuickUnlockSettings } from './QuickUnlockSettings'
 
 const SOURCE_URL = 'https://github.com/ghersonmena/passme'
 
@@ -73,6 +74,7 @@ export function Settings({ account, prefs, onPrefs, onAccountChanged, onLogout }
         <p className="hint">{t('settings.autoLockHelp')}</p>
       </div>
 
+      <QuickUnlockSettings account={account} onChanged={onAccountChanged} />
       <TwoFactor account={account} onChanged={onAccountChanged} />
       <ChangePassword account={account} onChanged={onAccountChanged} />
 

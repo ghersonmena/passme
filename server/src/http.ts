@@ -4,7 +4,9 @@ import { z } from 'zod'
 export class HttpError extends Error {
   constructor(
     readonly status: number,
-    readonly code: string
+    readonly code: string,
+    // Datos extra que la app puede mostrar, como los intentos que quedan
+    readonly extra: Record<string, number> = {}
   ) {
     super(code)
   }

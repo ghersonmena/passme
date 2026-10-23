@@ -1,5 +1,14 @@
 # Cambios
 
+## v0.1.5
+
+- Desbloqueo rápido opcional por dispositivo con PIN de 6 dígitos o patrón, a elegir en Ajustes
+- Se activa con la contraseña maestra y solo sirve con la sesión abierta; iniciar sesión siempre
+  pide la contraseña
+- El servidor guarda la mitad de la llave y la entrega solo con el PIN correcto: 5 intentos y se
+  desactiva
+- Se rechazan PINs obvios (000000, 123456…) y cerrar sesión borra todo del dispositivo
+
 ## v0.1.4
 
 - Tema claro, oscuro o el del sistema, a elegir en Ajustes; la elección se guarda en el dispositivo

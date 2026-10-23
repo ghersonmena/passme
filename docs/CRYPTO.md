@@ -70,6 +70,30 @@ llave de usuario (aleatoria, 256 bits)
 El 2FA sigue activo después de recuperar. Quien perdió también el teléfono entra con un código de
 respaldo.
 
+## Desbloqueo rápido (PIN o patrón)
+
+Opcional y por dispositivo. Sirve solo para desbloquear con la sesión abierta; iniciar sesión
+siempre pide la contraseña maestra.
+
+```
+PIN (6 dígitos) o patrón ─Argon2id(sal local secreta)→ HKDF → verificador (al servidor) + pinKey
+servidor: share aleatorio de 256 bits, guardado cifrado con SERVER_SECRET y ligado a la sesión
+dispositivo: AES-GCM(pinKey, AES-GCM(share, llave de usuario))
+```
+
+- Activarlo pide la contraseña maestra: la llave de usuario solo existe en memoria como `CryptoKey`
+  no exportable, y para guardarla hace falta volver a descifrarla.
+- Para desbloquear, el navegador manda el verificador y el servidor devuelve el `share` si coincide.
+  Cada intento se cuenta **antes** de comprobarlo; al quinto fallo el servidor borra el `share` y el
+  desbloqueo rápido deja de existir.
+- Quien robe el dispositivo tiene la sal y el blob, pero no el `share`: no puede probar el millón de
+  PINs sin pasar por el servidor (5 intentos).
+- El servidor no puede adivinar el PIN a partir del verificador porque no conoce la sal, que nunca
+  sale del dispositivo.
+- Cerrar sesión, que la sesión venza o cambiar la contraseña desde otro dispositivo (que cierra las
+  demás sesiones) lo desactiva.
+- Se rechazan PINs triviales (todos iguales o escaleras).
+
 ## Lo que el servidor sí ve
 
 - Correos, fechas de creación y modificación, cuántos elementos hay en cada bóveda y su tamaño
@@ -86,3 +110,7 @@ color de las bóvedas.
 - Desbloquear la bóveda con la sesión aún abierta es una operación local: quien tenga acceso al
   dispositivo y a la sesión puede intentar adivinar la contraseña sin límite de intentos, aunque
   Argon2id hace cada intento costoso.
+- Con el desbloqueo rápido, alguien con el dispositivo **y** una copia de la base de datos **y**
+  `SERVER_SECRET` podría probar todos los PINs sin límite. Un PIN de 6 dígitos o un patrón tienen
+  mucha menos entropía que una buena contraseña maestra; quien necesite el máximo nivel no debe
+  activarlo.

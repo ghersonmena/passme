@@ -5,7 +5,9 @@ import type { RegisterPayload } from '../crypto/keys'
 export class ApiError extends Error {
   constructor(
     readonly status: number,
-    readonly code: string
+    readonly code: string,
+    // Datos extra del error, como los intentos que quedan
+    readonly extra: Record<string, number> = {}
   ) {
     super(code)
   }
@@ -27,8 +29,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   } catch {
     throw new ApiError(0, 'network_error')
   }
-  const data = (await res.json().catch(() => ({}))) as { error?: string }
-  if (!res.ok) throw new ApiError(res.status, data.error ?? 'server_error')
+  const data = (await res.json().catch(() => ({}))) as { error?: string } & Record<string, number>
+  if (!res.ok) {
+    const { error, ...extra } = data
+    throw new ApiError(res.status, error ?? 'server_error', extra)
+  }
   return data as T
 }
 
@@ -47,6 +52,8 @@ export interface Account {
   protectedUserKey: string
   publicKey: string
   protectedPrivateKey: string
+  // Desbloqueo rápido activo en esta sesión (este dispositivo)
+  quickUnlock: boolean
 }
 
 export interface EncryptedVault {
@@ -85,6 +92,11 @@ export const api = {
   totpEnable: (code: string) => request<{ backupCodes: string[] }>('POST', '/account/totp/enable', { code }),
   totpDisable: (authKey: string, code: string) =>
     request<{ ok: true }>('POST', '/account/totp/disable', { authKey, code }),
+
+  enableQuickUnlock: (authKey: string, verifier: string) =>
+    request<{ share: string }>('POST', '/account/quick-unlock', { authKey, verifier }),
+  disableQuickUnlock: () => request<{ ok: true }>('DELETE', '/account/quick-unlock'),
+  openQuickUnlock: (verifier: string) => request<{ share: string }>('POST', '/account/quick-unlock/open', { verifier }),
 
   vaults: () => request<EncryptedVault[]>('GET', '/vaults'),
   createVault: (id: string, data: string, protectedVaultKey: string) =>

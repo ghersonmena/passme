@@ -18,7 +18,11 @@ export interface Unlocked {
 }
 
 export async function openSession(account: Account, encKey: CryptoKey): Promise<Unlocked> {
-  const userKey = await unlockUserKey(encKey, account.protectedUserKey)
+  return openSessionWithKey(account, await unlockUserKey(encKey, account.protectedUserKey))
+}
+
+// Con la llave de usuario ya descifrada (por ejemplo, con el desbloqueo rápido)
+export async function openSessionWithKey(account: Account, userKey: CryptoKey): Promise<Unlocked> {
   const vaults: OpenVault[] = []
   for (const v of await api.vaults()) {
     const key = await unlockVaultKey(userKey, v.id, v.protectedVaultKey)

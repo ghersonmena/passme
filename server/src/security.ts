@@ -67,7 +67,8 @@ export class ServerKeys {
     this.backupKey = derive('passme:server:backup-codes')
   }
 
-  // Cifrado del lado del servidor para el secreto TOTP del inicio de sesión (AES-256-GCM)
+  // Cifrado del lado del servidor (AES-256-GCM) para el secreto TOTP y la mitad del desbloqueo
+  // rápido: quien copie la base de datos sin SERVER_SECRET no los puede leer
   seal(plaintext: string, aad: string): string {
     const iv = randomBytes(12)
     const cipher = createCipheriv('aes-256-gcm', this.totpKey, iv)

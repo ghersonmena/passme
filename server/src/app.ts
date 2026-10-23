@@ -38,7 +38,7 @@ export async function buildApp(ctx: Context, logger: boolean | object = true): P
   })
 
   app.setErrorHandler((err, req, reply) => {
-    if (err instanceof HttpError) return reply.status(err.status).send({ error: err.code })
+    if (err instanceof HttpError) return reply.status(err.status).send({ ...err.extra, error: err.code })
     const status = (err as { statusCode?: number }).statusCode
     if (status === 429) return reply.status(429).send({ error: 'too_many_requests' })
     if (status && status >= 400 && status < 500) return reply.status(status).send({ error: 'invalid_request' })

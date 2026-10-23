@@ -14,6 +14,8 @@ export const AAD = {
   userKey: 'passme:user-key',
   userKeyRecovery: 'passme:user-key:recovery',
   privateKey: 'passme:private-key',
+  quickUnlock: 'passme:quick-unlock',
+  quickUnlockShare: 'passme:quick-unlock:share',
   vaultKey: (vaultId: string) => `passme:vault-key:${vaultId}`,
   vault: (vaultId: string) => `passme:vault:${vaultId}`,
   item: (vaultId: string, itemId: string) => `passme:item:${vaultId}:${itemId}`

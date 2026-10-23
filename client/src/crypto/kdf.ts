@@ -45,7 +45,13 @@ export async function splitKeys(secret: Uint8Array<ArrayBuffer>, purpose: string
   return { authKey, encKey }
 }
 
-export async function deriveMasterKeys(password: string, kdf: KdfParams): Promise<DerivedKeys> {
+export function deriveMasterKeys(password: string, kdf: KdfParams): Promise<DerivedKeys> {
+  return deriveKeys(password, kdf, 'master')
+}
+
+// Argon2id + separación en llave de autenticación y de cifrado. "purpose" separa los usos (contraseña
+// maestra, PIN del desbloqueo rápido) para que nunca compartan llaves aunque coincidan los datos.
+export async function deriveKeys(password: string, kdf: KdfParams, purpose: string): Promise<DerivedKeys> {
   const master = await argon2id({
     // NFKC: la misma contraseña escrita en otro teclado o sistema produce los mismos bytes
     password: password.normalize('NFKC'),
@@ -56,7 +62,7 @@ export async function deriveMasterKeys(password: string, kdf: KdfParams): Promis
     hashLength: 32,
     outputType: 'binary'
   })
-  const keys = await splitKeys(new Uint8Array(master), 'master')
+  const keys = await splitKeys(new Uint8Array(master), purpose)
   wipe(master)
   return keys
 }
