@@ -6,17 +6,21 @@ contraseña maestra.
 
 *Self-hosted, zero-knowledge password manager (PWA). Spanish and English UI.*
 
-## Qué incluye (v0.1.0)
+## Qué incluye (v0.1.2)
 
 - Cuentas con contraseña maestra (Argon2id) y **frase de recuperación de 24 palabras**
 - Verificación en dos pasos (TOTP) con 10 códigos de respaldo
-- Inicios de sesión: usuario, contraseña, sitios web, notas, favoritos y papelera
+- 15 tipos de elementos: inicios de sesión, notas seguras, tarjetas, identidades, credenciales de
+  API, bases de datos, servidores, licencias de software, claves SSH, redes Wi-Fi, ubicaciones
+  secretas, cuentas bancarias, carteras de criptomonedas, registros médicos y pasaportes
+- Campos personalizados, favoritos y papelera en cualquier elemento
+- Varias bóvedas por cuenta, cada una con su nombre, ícono, color y llave propia
 - Generador de contraseñas y de frases
 - Bloqueo automático configurable (5 min por defecto) y portapapeles que se vacía a los 30 s
 - Varios usuarios por servidor, con registro abierto o cerrado
 - Interfaz en español e inglés, instalable en el teléfono
 
-Próximas versiones: notas seguras y tarjetas, códigos TOTP por elemento, importar desde Proton
+Próximas versiones: códigos TOTP por elemento, importar desde Proton
 Pass, monitor de seguridad, bóvedas compartidas y passkeys.
 
 ## Seguridad en breve

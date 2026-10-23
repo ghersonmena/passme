@@ -8,7 +8,7 @@ import {
   randomInt,
   strengthFromBits
 } from './generator'
-import { decryptItem, emptyLogin, encryptItem } from './items'
+import { decryptItem, emptyItem, encryptItem, normalizeItem } from './items'
 import { deriveMasterKeys } from './kdf'
 import {
   AAD,
@@ -60,7 +60,7 @@ describe('cuenta', () => {
     expect(master.authKey).toBe(payload.authKey)
     const userKey = await unlockUserKey(master.encKey, payload.protectedUserKey)
     const vaultKey = await unlockVaultKey(userKey, payload.vault.id, payload.vault.protectedVaultKey)
-    expect(await decryptVaultMeta(vaultKey, payload.vault.id, payload.vault.data)).toEqual({ name: 'Personal' })
+    expect(await decryptVaultMeta(vaultKey, payload.vault.id, payload.vault.data)).toEqual({ name: 'Personal', icon: 'home', color: 'plum' })
 
     // Contraseña incorrecta
     const wrong = await deriveMasterKeys(password + 'x', payload.kdf)
@@ -80,7 +80,7 @@ describe('cuenta', () => {
     expect(newMaster.authKey).toBe(reset.authKey)
     const sameUserKey = await unlockUserKey(newMaster.encKey, reset.protectedUserKey)
     const sameVaultKey = await unlockVaultKey(sameUserKey, payload.vault.id, payload.vault.protectedVaultKey)
-    expect(await decryptVaultMeta(sameVaultKey, payload.vault.id, payload.vault.data)).toEqual({ name: 'Personal' })
+    expect(await decryptVaultMeta(sameVaultKey, payload.vault.id, payload.vault.data)).toEqual({ name: 'Personal', icon: 'home', color: 'plum' })
   })
 
   it('rechaza frases inválidas', () => {
@@ -99,7 +99,7 @@ describe('elementos', () => {
     const key = await importAesKey(randomBytes(32))
     const vaultId = crypto.randomUUID()
     const id = crypto.randomUUID()
-    const data = { ...emptyLogin(), name: 'GitHub', password: 's3cr3t' }
+    const data = { ...emptyItem('login'), name: 'GitHub', fields: { username: 'ana', password: 's3cr3t' } }
     const sealed = await encryptItem(key, vaultId, id, data)
     const meta = { vaultId, revision: 1, createdAt: '', updatedAt: '', trashedAt: null }
     expect((await decryptItem(key, { ...meta, id, data: sealed })).data).toEqual(data)
@@ -107,6 +107,27 @@ describe('elementos', () => {
     await expect(
       decryptItem(key, { ...meta, id, vaultId: crypto.randomUUID(), data: sealed })
     ).rejects.toThrow()
+  })
+})
+
+describe('formato de elementos', () => {
+  it('convierte los inicios de sesión de la v0.1 al formato con campos', () => {
+    const old = { type: 'login', name: 'GitHub', username: 'ana', password: 'x', urls: ['https://github.com'], note: '', favorite: true }
+    expect(normalizeItem(old as never)).toEqual({
+      type: 'login',
+      name: 'GitHub',
+      fields: { username: 'ana', password: 'x' },
+      urls: ['https://github.com'],
+      note: '',
+      favorite: true,
+      custom: []
+    })
+  })
+
+  it('descarta valores que no son texto y tipos desconocidos', () => {
+    const odd = normalizeItem({ type: 'spaceship', name: 'X', fields: { a: 'ok', b: 3 } } as never)
+    expect(odd.type).toBe('note')
+    expect(odd.fields).toEqual({ a: 'ok' })
   })
 })
 

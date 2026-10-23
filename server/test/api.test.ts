@@ -3,11 +3,14 @@
 //   TEST_DATABASE_URL=postgres://passme:passme-dev@localhost:5433/passme_test npm test -w server
 import * as OTPAuth from 'otpauth'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { decryptItem, emptyLogin, encryptItem } from '../../client/src/crypto/items'
+import { decryptItem, emptyItem, encryptItem } from '../../client/src/crypto/items'
 import { deriveMasterKeys } from '../../client/src/crypto/kdf'
 import {
   AAD,
   createAccount,
+  decryptVaultMeta,
+  encryptVaultMeta,
+  newVault,
   deriveRecoveryKeys,
   newRecoveryPhrase,
   rewrapUserKey,
@@ -122,13 +125,13 @@ describe.skipIf(!DB)('API de punta a punta', () => {
     const vaultKey = await unlockVaultKey(userKey, vault!.id, vault!.protectedVaultKey)
 
     itemId = crypto.randomUUID()
-    const data = { ...emptyLogin(), name: 'GitHub', username: 'ana', password: 's3cr3t!' }
+    const data = { ...emptyItem('login'), name: 'GitHub', fields: { username: 'ana', password: 's3cr3t!' } }
     const created = await c.call('POST', '/items', { id: itemId, vaultId, data: await encryptItem(vaultKey, vaultId, itemId, data) })
     expect(created.status).toBe(200)
     expect(created.body.data).not.toContain('GitHub')
 
     const updated = await c.call('PUT', `/items/${itemId}`, {
-      data: await encryptItem(vaultKey, vaultId, itemId, { ...data, password: 'otra' }),
+      data: await encryptItem(vaultKey, vaultId, itemId, { ...data, fields: { ...data.fields, password: 'otra' } }),
       revision: 1
     })
     expect(updated.body.revision).toBe(2)
@@ -138,7 +141,7 @@ describe.skipIf(!DB)('API de punta a punta', () => {
     expect(stale.status).toBe(409)
 
     const [enc] = (await c.call('GET', '/items')).body as unknown as Parameters<typeof decryptItem>[1][]
-    expect((await decryptItem(vaultKey, enc!)).data.password).toBe('otra')
+    expect((await decryptItem(vaultKey, enc!)).data.fields.password).toBe('otra')
 
     // Borrar para siempre solo desde la papelera
     const temp = crypto.randomUUID()
@@ -172,6 +175,63 @@ describe.skipIf(!DB)('API de punta a punta', () => {
     // No puede crear elementos en la bóveda de otro
     const res = await c.call('POST', '/items', { id: crypto.randomUUID(), vaultId, data: 'v1.' + 'A'.repeat(60) })
     expect(res.status).toBe(404)
+    // Ni editar, ni borrar, ni mover elementos hacia la bóveda de otro
+    expect((await c.call('PUT', `/vaults/${vaultId}`, { data: 'v1.' + 'A'.repeat(60) })).status).toBe(404)
+    expect((await c.call('DELETE', `/vaults/${vaultId}`)).status).toBe(404)
+    const [own] = (await c.call('GET', '/vaults')).body as unknown as { id: string }[]
+    const mine = crypto.randomUUID()
+    await c.call('POST', '/items', { id: mine, vaultId: own!.id, data: 'v1.' + 'A'.repeat(60) })
+    const moved = await c.call('POST', `/items/${mine}/move`, { vaultId, data: 'v1.' + 'A'.repeat(60), revision: 1 })
+    expect(moved.status).toBe(404)
+  })
+
+  it('crea, edita y borra bóvedas, y mueve elementos entre ellas', async () => {
+    const c = new Client(app)
+    const { payload, encKey } = await createAccount('caro@example.com', password, newRecoveryPhrase(), 'Personal')
+    await c.call('POST', '/auth/register', payload)
+    const account = (await c.call('GET', '/account')).body
+    const userKey = await unlockUserKey(encKey, account.protectedUserKey)
+    const first = payload.vault.id
+    const firstKey = await unlockVaultKey(userKey, first, payload.vault.protectedVaultKey)
+
+    // La última bóveda no se puede borrar
+    expect((await c.call('DELETE', `/vaults/${first}`)).body.error).toBe('last_vault')
+
+    const work = await newVault(userKey, { name: 'Trabajo', icon: 'briefcase', color: 'blue' })
+    const created = await c.call('POST', '/vaults', { id: work.id, data: work.data, protectedVaultKey: work.protectedVaultKey })
+    expect(created.status).toBe(200)
+    expect(created.body.role).toBe('owner')
+    expect((await c.call('POST', '/vaults', { id: work.id, data: work.data, protectedVaultKey: work.protectedVaultKey })).status).toBe(409)
+
+    const renamed = await encryptVaultMeta(work.key, work.id, { name: 'Oficina', icon: 'building', color: 'green' })
+    expect((await c.call('PUT', `/vaults/${work.id}`, { data: renamed })).status).toBe(200)
+    const listed = (await c.call('GET', '/vaults')).body as unknown as { id: string; data: string }[]
+    expect(listed.map((v) => v.id)).toEqual([first, work.id])
+    expect((await decryptVaultMeta(work.key, work.id, listed[1]!.data)).name).toBe('Oficina')
+
+    // Mover: se vuelve a cifrar con la llave de la bóveda destino
+    const id = crypto.randomUUID()
+    const data = { ...emptyItem('wifi'), name: 'Casa', fields: { ssid: 'MiRed', password: 'clave' } }
+    await c.call('POST', '/items', { id, vaultId: first, data: await encryptItem(firstKey, first, id, data) })
+    const moved = await c.call('POST', `/items/${id}/move`, {
+      vaultId: work.id,
+      data: await encryptItem(work.key, work.id, id, data),
+      revision: 1
+    })
+    expect(moved.body.vaultId).toBe(work.id)
+    expect((await decryptItem(work.key, moved.body as never)).data.fields.ssid).toBe('MiRed')
+    // Un movimiento con una revisión vieja se rechaza
+    const stale = await c.call('POST', `/items/${id}/move`, {
+      vaultId: first,
+      data: await encryptItem(firstKey, first, id, data),
+      revision: 1
+    })
+    expect(stale.status).toBe(409)
+
+    // Borrar la bóveda borra también sus elementos
+    expect((await c.call('DELETE', `/vaults/${work.id}`)).status).toBe(200)
+    expect((await c.call('GET', '/items')).body).toEqual([])
+    expect(((await c.call('GET', '/vaults')).body as unknown as unknown[]).length).toBe(1)
   })
 
   it('activa el 2FA y lo exige al iniciar sesión, sin aceptar códigos repetidos', async () => {

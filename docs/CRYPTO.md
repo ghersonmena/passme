@@ -18,14 +18,15 @@ llave de usuario (aleatoria, 256 bits)
   ├─ cifrada con recoveryEncKey  → recovery_protected_user_key
   ├─ cifra la llave privada P-256 (para compartir bóvedas)
   └─ cifra la llave de cada bóveda (aleatoria, 256 bits)
-        └─ cifra el nombre de la bóveda y cada elemento
+        └─ cifra el nombre, ícono y color de la bóveda, y cada elemento
 ```
 
 - **Cifrado:** AES-256-GCM con IV aleatorio de 96 bits en cada operación. El formato guardado es
   `v1.` + base64url(iv ‖ texto cifrado ‖ etiqueta).
 - **AAD:** cada texto cifrado se ata a su contexto (`passme:item:<bóveda>:<id>`,
   `passme:vault-key:<bóveda>`, etc.). Un servidor malicioso no puede mover un elemento a otro id o
-  bóveda, ni cambiar una llave por otra, sin que el descifrado falle.
+  bóveda, ni cambiar una llave por otra, sin que el descifrado falle. Para mover un elemento a otra
+  bóveda, el navegador lo vuelve a cifrar con la llave de la bóveda destino.
 - **Llaves en memoria:** se importan como `CryptoKey` no exportables. Los búferes intermedios se
   sobrescriben con ceros en cuanto dejan de usarse. Al bloquear se sueltan todas las referencias.
 - **Contraseñas:** se normalizan con NFKC para que la misma contraseña escrita desde otro sistema o
@@ -75,7 +76,8 @@ respaldo.
   aproximado.
 - Direcciones IP y user agents de las sesiones.
 
-No ve nombres, usuarios, contraseñas, URLs, notas ni el tipo de cada elemento.
+No ve nombres, usuarios, contraseñas, URLs, notas, el tipo de cada elemento ni el nombre, ícono o
+color de las bóvedas.
 
 ## Límites conocidos
 

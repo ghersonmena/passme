@@ -1,5 +1,5 @@
-import { Check, Copy, Eye, EyeOff, LoaderCircle } from 'lucide-react'
-import { useEffect, useId, useState, type InputHTMLAttributes, type ReactNode } from 'react'
+import { Check, Copy, Eye, EyeOff, LoaderCircle, X } from 'lucide-react'
+import { useEffect, useId, useRef, useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import { estimatePasswordBits, strengthFromBits, type Strength } from '../crypto/generator'
 import { useI18n } from '../i18n'
 import { copySecret } from '../state/clipboard'
@@ -118,5 +118,40 @@ export function ErrorText({ children }: { children: ReactNode }) {
     <p className="error" role="alert">
       {children}
     </p>
+  )
+}
+
+// Ventana modal con <dialog>: el navegador se encarga del foco, de Esc y de bloquear el fondo
+export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  const { t } = useI18n()
+  const ref = useRef<HTMLDialogElement>(null)
+  const titleId = useId()
+  useEffect(() => {
+    const dialog = ref.current
+    if (dialog && !dialog.open) dialog.showModal()
+    return () => dialog?.close()
+  }, [])
+  return (
+    <dialog
+      ref={ref}
+      className="modal"
+      aria-labelledby={titleId}
+      onCancel={(e) => {
+        e.preventDefault()
+        onClose()
+      }}
+      // Un clic en el fondo oscuro (fuera del contenido) cierra la ventana
+      onClick={(e) => e.target === ref.current && onClose()}
+    >
+      <div className="modal-body">
+        <header className="modal-header">
+          <h2 id={titleId}>{title}</h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label={t('common.close')} title={t('common.close')}>
+            <X size={20} />
+          </button>
+        </header>
+        {children}
+      </div>
+    </dialog>
   )
 }

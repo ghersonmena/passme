@@ -1,6 +1,6 @@
 import { api, type Account, type EncryptedVault } from '../api/client'
 import { decryptItem, encryptItem, type EncryptedItem, type Item, type ItemData } from '../crypto/items'
-import { decryptVaultMeta, unlockUserKey, unlockVaultKey, type VaultMeta } from '../crypto/keys'
+import { decryptVaultMeta, encryptVaultMeta, newVault, unlockUserKey, unlockVaultKey, type VaultMeta } from '../crypto/keys'
 
 // Una bóveda ya descifrada. Las llaves viven solo en memoria: al bloquear se sueltan todas las
 // referencias y al recargar la página hay que volver a escribir la contraseña maestra.
@@ -76,4 +76,27 @@ export async function trashItem(session: Unlocked, item: Item): Promise<Item> {
 
 export async function restoreItem(session: Unlocked, item: Item): Promise<Item> {
   return decrypted(session, await api.restoreItem(item.id))
+}
+
+// Cambiar de bóveda implica volver a cifrar con la llave de la bóveda destino
+export async function moveItem(session: Unlocked, item: Item, vaultId: string, data: ItemData): Promise<Item> {
+  const sealed = await encryptItem(vaultKey(session, vaultId), vaultId, item.id, data)
+  return decrypted(session, await api.moveItem(item.id, vaultId, sealed, item.revision))
+}
+
+// --- Bóvedas ---
+
+export async function createVault(session: Unlocked, meta: VaultMeta): Promise<OpenVault> {
+  const vault = await newVault(session.userKey, meta)
+  const created = await api.createVault(vault.id, vault.data, vault.protectedVaultKey)
+  return { id: vault.id, role: created.role, meta, key: vault.key }
+}
+
+export async function updateVault(vault: OpenVault, meta: VaultMeta): Promise<OpenVault> {
+  await api.updateVault(vault.id, await encryptVaultMeta(vault.key, vault.id, meta))
+  return { ...vault, meta }
+}
+
+export function canWrite(vault: OpenVault | undefined): boolean {
+  return !!vault && vault.role !== 'viewer'
 }

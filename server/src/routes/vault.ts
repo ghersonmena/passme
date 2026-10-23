@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify'
+import type { TransactionSql } from 'postgres'
 import { z } from 'zod'
 import type { Context } from '../context.js'
 import { blob, HttpError, parse, uuid } from '../http.js'
@@ -6,7 +7,11 @@ import { requireAuth } from '../sessions.js'
 
 // Un elemento cifrado: suficiente para notas largas; los adjuntos irán aparte
 const itemData = blob(100_000)
+// Nombre, ícono y color de la bóveda, cifrados
+const vaultData = blob(4000)
 const WRITE_ROLES = ['owner', 'manager', 'editor']
+const MANAGE_ROLES = ['owner', 'manager']
+const MAX_VAULTS = 50
 
 interface ItemRow {
   id: string
@@ -48,11 +53,24 @@ export async function vaultRoutes(app: FastifyInstance, ctx: Context): Promise<v
     return parse(z.object({ id: uuid }), params).id
   }
 
-  app.get('/vaults', async (req) => {
+  async function memberRole(userId: string, vaultId: string): Promise<string | null> {
+    const [m] = await sql<{ role: string }[]>`
+      SELECT role FROM vault_members WHERE vault_id = ${vaultId} AND user_id = ${userId}`
+    return m?.role ?? null
+  }
+
+  async function ownedVaults(tx: TransactionSql, userId: string): Promise<number> {
+    // Bloquea al usuario para que dos peticiones en paralelo no se salten los límites
+    await tx`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`
+    const [row] = await tx<{ count: number }[]>`SELECT count(*)::int AS count FROM vaults WHERE owner_id = ${userId}`
+    return row?.count ?? 0
+  }
+
+  async function listVaults(userId: string, vaultId?: string) {
     const rows = await sql`
       SELECT v.id, v.data, v.owner_id, m.protected_vault_key, m.role, v.updated_at
       FROM vault_members m JOIN vaults v ON v.id = m.vault_id
-      WHERE m.user_id = ${req.session!.userId}
+      WHERE m.user_id = ${userId} ${vaultId ? sql`AND v.id = ${vaultId}` : sql``}
       ORDER BY v.created_at`
     return rows.map((r) => ({
       id: r.id,
@@ -62,6 +80,52 @@ export async function vaultRoutes(app: FastifyInstance, ctx: Context): Promise<v
       role: r.role,
       updatedAt: r.updated_at
     }))
+  }
+
+  app.get('/vaults', async (req) => listVaults(req.session!.userId))
+
+  // Como con los elementos, el id lo genera el cliente porque va en los datos autenticados
+  app.post('/vaults', async (req) => {
+    const userId = req.session!.userId
+    const body = parse(z.object({ id: uuid, data: vaultData, protectedVaultKey: blob(200) }), req.body)
+    await sql.begin(async (tx) => {
+      const count = await ownedVaults(tx, userId)
+      if (count >= MAX_VAULTS) throw new HttpError(409, 'too_many_vaults')
+      const [created] = await tx`
+        INSERT INTO vaults (id, owner_id, data) VALUES (${body.id}, ${userId}, ${body.data})
+        ON CONFLICT (id) DO NOTHING RETURNING id`
+      if (!created) throw new HttpError(409, 'conflict')
+      await tx`
+        INSERT INTO vault_members (vault_id, user_id, protected_vault_key, role)
+        VALUES (${body.id}, ${userId}, ${body.protectedVaultKey}, 'owner')`
+    })
+    return (await listVaults(userId, body.id))[0]
+  })
+
+  app.put('/vaults/:id', async (req) => {
+    const userId = req.session!.userId
+    const id = itemId(req.params)
+    const body = parse(z.object({ data: vaultData }), req.body)
+    const role = await memberRole(userId, id)
+    if (!role) throw new HttpError(404, 'not_found')
+    if (!MANAGE_ROLES.includes(role)) throw new HttpError(403, 'forbidden')
+    await sql`UPDATE vaults SET data = ${body.data}, updated_at = now() WHERE id = ${id}`
+    return (await listVaults(userId, id))[0]
+  })
+
+  // Borra la bóveda con todo su contenido. Solo el dueño, y nunca su última bóveda.
+  app.delete('/vaults/:id', async (req) => {
+    const userId = req.session!.userId
+    const id = itemId(req.params)
+    const role = await memberRole(userId, id)
+    if (!role) throw new HttpError(404, 'not_found')
+    if (role !== 'owner') throw new HttpError(403, 'forbidden')
+    await sql.begin(async (tx) => {
+      const count = await ownedVaults(tx, userId)
+      if (count <= 1) throw new HttpError(409, 'last_vault')
+      await tx`DELETE FROM vaults WHERE id = ${id}`
+    })
+    return { ok: true }
   })
 
   app.get('/items', async (req) => {
@@ -94,6 +158,21 @@ export async function vaultRoutes(app: FastifyInstance, ctx: Context): Promise<v
     await writableItem(req.session!.userId, id)
     const [row] = await sql<ItemRow[]>`
       UPDATE items SET data = ${body.data}, revision = revision + 1, updated_at = now()
+      WHERE id = ${id} AND revision = ${body.revision} RETURNING *`
+    if (!row) throw new HttpError(409, 'conflict')
+    return toItem(row)
+  })
+
+  // Mover a otra bóveda: el cliente vuelve a cifrar el elemento con la llave de la bóveda destino
+  app.post('/items/:id/move', async (req) => {
+    const userId = req.session!.userId
+    const id = itemId(req.params)
+    const body = parse(z.object({ vaultId: uuid, data: itemData, revision: z.int().positive() }), req.body)
+    await writableItem(userId, id)
+    const role = await memberRole(userId, body.vaultId)
+    if (!role || !WRITE_ROLES.includes(role)) throw new HttpError(404, 'not_found')
+    const [row] = await sql<ItemRow[]>`
+      UPDATE items SET vault_id = ${body.vaultId}, data = ${body.data}, revision = revision + 1, updated_at = now()
       WHERE id = ${id} AND revision = ${body.revision} RETURNING *`
     if (!row) throw new HttpError(409, 'conflict')
     return toItem(row)

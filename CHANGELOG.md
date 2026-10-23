@@ -1,5 +1,18 @@
 # Cambios
 
+## v0.1.2
+
+- 14 tipos de elementos nuevos además de los inicios de sesión: nota segura, tarjeta de débito o
+  crédito, identidad, credencial de API, base de datos, servidor, licencia de software, clave SSH,
+  red Wi-Fi (con QR para conectarse), ubicación secreta (con enlace al mapa), cuenta bancaria,
+  cartera de criptomonedas, registro médico y pasaporte
+- Aviso de vencimiento en tarjetas, licencias, credenciales de API y pasaportes
+- Campos personalizados (visibles u ocultos) en cualquier elemento
+- Bóvedas personalizadas: crear, renombrar, elegir ícono y color, y eliminar
+- Mover elementos entre bóvedas (se vuelven a cifrar con la llave de la bóveda destino)
+- Filtro por tipo y búsqueda en todos los campos que no son secretos
+- Los inicios de sesión de la v0.1 se convierten solos al nuevo formato
+
 ## v0.1.1
 
 - Nueva identidad visual: paleta Ciruela en tema claro y oscuro

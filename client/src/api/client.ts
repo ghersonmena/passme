@@ -87,11 +87,17 @@ export const api = {
     request<{ ok: true }>('POST', '/account/totp/disable', { authKey, code }),
 
   vaults: () => request<EncryptedVault[]>('GET', '/vaults'),
+  createVault: (id: string, data: string, protectedVaultKey: string) =>
+    request<EncryptedVault>('POST', '/vaults', { id, data, protectedVaultKey }),
+  updateVault: (id: string, data: string) => request<EncryptedVault>('PUT', `/vaults/${id}`, { data }),
+  deleteVault: (id: string) => request<{ ok: true }>('DELETE', `/vaults/${id}`),
   items: () => request<EncryptedItem[]>('GET', '/items'),
   createItem: (id: string, vaultId: string, data: string) =>
     request<EncryptedItem>('POST', '/items', { id, vaultId, data }),
   updateItem: (id: string, data: string, revision: number) =>
     request<EncryptedItem>('PUT', `/items/${id}`, { data, revision }),
+  moveItem: (id: string, vaultId: string, data: string, revision: number) =>
+    request<EncryptedItem>('POST', `/items/${id}/move`, { vaultId, data, revision }),
   trashItem: (id: string) => request<EncryptedItem>('POST', `/items/${id}/trash`, {}),
   restoreItem: (id: string) => request<EncryptedItem>('POST', `/items/${id}/restore`, {}),
   deleteItem: (id: string) => request<{ ok: true }>('DELETE', `/items/${id}`)

@@ -21,7 +21,12 @@ export const AAD = {
 
 export interface VaultMeta {
   name: string
+  // Ícono y color de una lista fija de la app; las bóvedas de la v0.1 no los tienen
+  icon?: string
+  color?: string
 }
+
+export const DEFAULT_VAULT_LOOK = { icon: 'home', color: 'plum' } as const
 
 // --- Frase de recuperación (BIP39, 24 palabras = 256 bits) ---
 
@@ -83,12 +88,7 @@ export async function createAccount(
   const protectedPrivateKey = await encryptBytes(userKey, privateRaw, AAD.privateKey)
   wipe(privateRaw)
 
-  const vaultId = crypto.randomUUID()
-  const vaultKeyRaw = randomBytes(32)
-  const vaultKey = await importAesKey(vaultKeyRaw)
-  const protectedVaultKey = await encryptBytes(userKey, vaultKeyRaw, AAD.vaultKey(vaultId))
-  wipe(vaultKeyRaw)
-  const meta: VaultMeta = { name: defaultVaultName }
+  const vault = await newVault(userKey, { name: defaultVaultName, ...DEFAULT_VAULT_LOOK })
 
   const payload: RegisterPayload = {
     email,
@@ -99,7 +99,7 @@ export async function createAccount(
     recoveryProtectedUserKey,
     publicKey,
     protectedPrivateKey,
-    vault: { id: vaultId, data: await encryptJson(vaultKey, meta, AAD.vault(vaultId)), protectedVaultKey }
+    vault: { id: vault.id, data: vault.data, protectedVaultKey: vault.protectedVaultKey }
   }
   return { payload, encKey: master.encKey }
 }
@@ -135,6 +135,25 @@ export async function unlockVaultKey(userKey: CryptoKey, vaultId: string, protec
   const key = await importAesKey(raw)
   wipe(raw)
   return key
+}
+
+// --- Bóvedas ---
+
+// Crea una bóveda con su propia llave aleatoria, cifrada con la llave de usuario
+export async function newVault(
+  userKey: CryptoKey,
+  meta: VaultMeta
+): Promise<{ id: string; key: CryptoKey; data: string; protectedVaultKey: string }> {
+  const id = crypto.randomUUID()
+  const raw = randomBytes(32)
+  const key = await importAesKey(raw)
+  const protectedVaultKey = await encryptBytes(userKey, raw, AAD.vaultKey(id))
+  wipe(raw)
+  return { id, key, data: await encryptVaultMeta(key, id, meta), protectedVaultKey }
+}
+
+export function encryptVaultMeta(vaultKey: CryptoKey, vaultId: string, meta: VaultMeta): Promise<string> {
+  return encryptJson(vaultKey, meta, AAD.vault(vaultId))
 }
 
 export function decryptVaultMeta(vaultKey: CryptoKey, vaultId: string, data: string): Promise<VaultMeta> {
