@@ -1,5 +1,12 @@
 # Cambios
 
+## v0.1.3
+
+- Vista rápida en la lista: un ojo para ver la contraseña (o el secreto principal de cada tipo) sin
+  abrir el elemento, con su medidor de fuerza
+- Botón para copiar ese secreto directo desde la lista; el portapapeles se vacía a los 30 s
+- La vista rápida se cierra sola a los 30 s
+
 ## v0.1.2
 
 - 14 tipos de elementos nuevos además de los inicios de sesión: nota segura, tarjeta de débito o

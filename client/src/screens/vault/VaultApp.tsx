@@ -1,5 +1,16 @@
-import { ChevronDown, LayoutGrid, Lock, Pencil, Plus, Search, Settings as SettingsIcon, Star, Trash2, Wand2 } from 'lucide-react'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  ChevronDown,
+  LayoutGrid,
+  Lock,
+  Pencil,
+  Plus,
+  Search,
+  Settings as SettingsIcon,
+  Star,
+  Trash2,
+  Wand2
+} from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../../api/client'
 import { Logo, Modal, Spinner } from '../../components/ui'
 import { emptyItem, type Item, type ItemData, type ItemType } from '../../crypto/items'
@@ -22,6 +33,7 @@ import {
 import { Generator } from './Generator'
 import { ItemDetail } from './ItemDetail'
 import { ItemEditor } from './ItemEditor'
+import { QuickActions, QuickPanel } from './QuickView'
 import { searchText, TYPE_BY_ID, TYPES, typeLabel } from './itemTypes'
 import { Settings } from './Settings'
 import { TypePicker } from './TypePicker'
@@ -63,6 +75,9 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
   // undefined = cerrado, null = bóveda nueva
   const [vaultModal, setVaultModal] = useState<OpenVault | null | undefined>(undefined)
   const [vaultSheet, setVaultSheet] = useState(false)
+  // Elemento con la vista rápida abierta en la lista
+  const [quickId, setQuickId] = useState<string | null>(null)
+  const closeQuick = useCallback(() => setQuickId(null), [])
   const [error, setError] = useState('')
 
   const { vaults } = session
@@ -181,6 +196,7 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
   }
 
   function pickVault(id: string | null) {
+    setQuickId(null)
     setVaultFilter(id)
     setTypeFilter('')
     setSelectedId(null)
@@ -190,6 +206,7 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
   }
 
   function go(next: View) {
+    setQuickId(null)
     setView(next)
     setSelectedId(null)
     setEditing(null)
@@ -233,7 +250,9 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
         onBack={() => setSelectedId(null)}
         onEdit={() => setEditing({ mode: 'edit' })}
         onToggleFavorite={() =>
-          act(async () => replace(await updateItem(session, selected, { ...selected.data, favorite: !selected.data.favorite })))
+          act(async () =>
+            replace(await updateItem(session, selected, { ...selected.data, favorite: !selected.data.favorite }))
+          )
         }
         onTrash={() =>
           act(async () => {
@@ -304,7 +323,12 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
         </div>
         <div className="sidebar-section">
           <span>{t('vaults.title')}</span>
-          <button className="icon-btn small" onClick={() => setVaultModal(null)} aria-label={t('vaults.new')} title={t('vaults.new')}>
+          <button
+            className="icon-btn small"
+            onClick={() => setVaultModal(null)}
+            aria-label={t('vaults.new')}
+            title={t('vaults.new')}
+          >
             <Plus size={16} />
           </button>
         </div>
@@ -395,7 +419,9 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
               ) : visible.length === 0 ? (
                 <div className="empty">
                   <p>
-                    {query || typeFilter ? t('vault.noResults') : t(`vault.empty.${view as 'all' | 'favorites' | 'trash'}`)}
+                    {query || typeFilter
+                      ? t('vault.noResults')
+                      : t(`vault.empty.${view as 'all' | 'favorites' | 'trash'}`)}
                   </p>
                 </div>
               ) : (
@@ -405,29 +431,39 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
                     const vault = vaultById.get(item.vaultId)
                     return (
                       <li key={item.id}>
-                        <button
-                          className={`item-row ${item.id === selectedId ? 'on' : ''}`}
-                          onClick={() => {
-                            setEditing(null)
-                            setSelectedId(item.id)
-                          }}
-                        >
-                          <span className="avatar" aria-hidden>
-                            <def.icon size={18} />
-                          </span>
-                          <span className="item-text">
-                            <span className="item-name">
-                              {item.data.name || t('item.untitled')}
-                              {item.data.favorite && <Star size={12} fill="currentColor" className="fav" />}
+                        <div className={`item-line ${item.id === selectedId ? 'on' : ''}`}>
+                          <button
+                            className="item-row"
+                            onClick={() => {
+                              setEditing(null)
+                              setSelectedId(item.id)
+                            }}
+                          >
+                            <span className="avatar" aria-hidden>
+                              <def.icon size={18} />
                             </span>
-                            <span className="item-sub">{def.subtitle(item.data) || t(typeLabel(item.data.type))}</span>
-                          </span>
-                          {!vaultFilter && vaults.length > 1 && vault && (
-                            <span className="row-vault" title={vault.meta.name}>
-                              <VaultIcon meta={vault.meta} size={12} />
+                            <span className="item-text">
+                              <span className="item-name">
+                                {item.data.name || t('item.untitled')}
+                                {item.data.favorite && <Star size={12} fill="currentColor" className="fav" />}
+                              </span>
+                              <span className="item-sub">
+                                {def.subtitle(item.data) || t(typeLabel(item.data.type))}
+                              </span>
                             </span>
-                          )}
-                        </button>
+                            {!vaultFilter && vaults.length > 1 && vault && (
+                              <span className="row-vault" title={vault.meta.name}>
+                                <VaultIcon meta={vault.meta} size={12} />
+                              </span>
+                            )}
+                          </button>
+                          <QuickActions
+                            data={item.data}
+                            open={quickId === item.id}
+                            onToggle={() => setQuickId(quickId === item.id ? null : item.id)}
+                          />
+                        </div>
+                        {quickId === item.id && <QuickPanel data={item.data} onClose={closeQuick} />}
                       </li>
                     )
                   })}

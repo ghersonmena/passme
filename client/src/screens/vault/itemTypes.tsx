@@ -56,6 +56,8 @@ export interface TypeDef {
   fields: FieldDef[]
   // Solo los inicios de sesión tienen lista de sitios web
   urls?: boolean
+  // Campo secreto que se puede ver o copiar desde la lista sin abrir el elemento
+  quick?: string
   // Lo que aparece bajo el nombre en la lista; nunca un secreto completo
   subtitle: (d: ItemData) => string
 }
@@ -78,6 +80,7 @@ export const TYPES: TypeDef[] = [
   {
     type: 'login',
     icon: KeyRound,
+    quick: 'password',
     urls: true,
     fields: [f('username', 'text', { label: 'loginUsername' }), f('password', 'password')],
     subtitle: (d) => first(d.fields.username, d.urls[0])
@@ -91,6 +94,7 @@ export const TYPES: TypeDef[] = [
   {
     type: 'card',
     icon: CreditCard,
+    quick: 'cardNumber',
     fields: [
       f('holder'),
       f('cardNumber', 'secret', { mono: true }),
@@ -118,6 +122,7 @@ export const TYPES: TypeDef[] = [
   {
     type: 'api',
     icon: Braces,
+    quick: 'apiKey',
     fields: [
       f('url', 'url'),
       f('clientId', 'text', { mono: true }),
@@ -130,6 +135,7 @@ export const TYPES: TypeDef[] = [
   {
     type: 'database',
     icon: Database,
+    quick: 'password',
     fields: [
       f('engine', 'select', { options: ENGINES }),
       f('host', 'text', { mono: true }),
@@ -144,6 +150,7 @@ export const TYPES: TypeDef[] = [
   {
     type: 'server',
     icon: Server,
+    quick: 'password',
     fields: [
       f('host', 'text', { mono: true }),
       f('port', 'number', { mono: true }),
@@ -156,6 +163,7 @@ export const TYPES: TypeDef[] = [
   {
     type: 'license',
     icon: FileKey,
+    quick: 'licenseKey',
     fields: [
       f('version'),
       f('licenseKey', 'secretText', { mono: true }),
@@ -182,18 +190,21 @@ export const TYPES: TypeDef[] = [
   {
     type: 'wifi',
     icon: Wifi,
+    quick: 'password',
     fields: [f('ssid'), f('password', 'password'), f('security', 'select', { options: WIFI_SECURITY })],
     subtitle: (d) => d.fields.ssid ?? ''
   },
   {
     type: 'location',
     icon: MapPin,
+    quick: 'accessCode',
     fields: [f('address', 'multiline'), f('coordinates', 'text', { mono: true }), f('accessCode', 'secret', { mono: true })],
     subtitle: (d) => first(d.fields.address?.split('\n')[0], d.fields.coordinates)
   },
   {
     type: 'bank',
     icon: Landmark,
+    quick: 'accountNumber',
     fields: [
       f('bankName'),
       f('holder'),

@@ -725,8 +725,23 @@ select.type-filter {
   flex: 1;
 }
 
+.item-line {
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+}
+
+.item-line:hover {
+  background: var(--surface-2);
+}
+
+.item-line.on {
+  background: var(--accent-soft);
+}
+
 .item-row {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -738,12 +753,42 @@ select.type-filter {
   text-align: left;
 }
 
-.item-row:hover {
-  background: var(--surface-2);
+.quick-actions {
+  display: flex;
+  flex-shrink: 0;
+  padding-right: 0.25rem;
 }
 
-.item-row.on {
-  background: var(--accent-soft);
+.quick-actions .icon-btn {
+  width: 34px;
+  height: 34px;
+}
+
+.quick-actions .icon-btn.on {
+  color: var(--accent);
+}
+
+/* Vista rápida: el secreto bajo la fila, con su fuerza si es una contraseña */
+.quick-panel {
+  margin: 0.25rem 0.25rem 0.5rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.quick-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.quick-value {
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .avatar {

@@ -113,6 +113,11 @@ export const es = {
   'item.deleteForever': 'Eliminar para siempre',
   'item.confirmDelete': '¿Eliminar "{name}" para siempre? No se puede deshacer.',
 
+  'quick.title': 'Vista rápida',
+  'quick.show': 'Ver {field}',
+  'quick.hide': 'Ocultar {field}',
+  'quick.copy': 'Copiar {field}',
+
   'generator.title': 'Generador',
   'generator.password': 'Contraseña',
   'generator.passphrase': 'Frase',

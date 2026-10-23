@@ -115,6 +115,11 @@ export const en: Messages = {
   'item.deleteForever': 'Delete forever',
   'item.confirmDelete': 'Delete "{name}" forever? This cannot be undone.',
 
+  'quick.title': 'Quick view',
+  'quick.show': 'Show {field}',
+  'quick.hide': 'Hide {field}',
+  'quick.copy': 'Copy {field}',
+
   'generator.title': 'Generator',
   'generator.password': 'Password',
   'generator.passphrase': 'Passphrase',
