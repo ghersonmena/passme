@@ -1,6 +1,10 @@
-# Solo para desarrollo: Postgres en el puerto 5433 (el 5432 suele estar ocupado)
+# Solo para desarrollo: Postgres en el puerto 5433 (el 5432 suele estar ocupado).
+# Nombre de proyecto propio: si compartiera "passme" con docker-compose.yml, Docker trataría las dos
+# bases como el mismo servicio y levantar una reemplazaría a la otra.
+name: passme-dev
+
 services:
-  db:
+  dev-db:
     image: postgres:17-alpine
     container_name: passme_dev_db
     environment:

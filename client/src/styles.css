@@ -1498,6 +1498,7 @@ fieldset.picker {
 }
 
 .pinpad {
+  width: min(300px, 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1510,40 +1511,49 @@ fieldset.picker {
 }
 
 .pin-dots span {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  border: 2px solid var(--muted);
+  background: var(--border);
+  transition: background 0.12s;
 }
 
 .pin-dots span.on {
   background: var(--accent);
-  border-color: var(--accent);
 }
 
+/* Teclado minimal: solo los números, sin teclas dibujadas; al tocar se marca un fondo suave */
 .pin-keys {
+  width: 100%;
   display: grid;
-  grid-template-columns: repeat(3, 64px);
-  gap: 0.75rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem 0;
 }
 
 .pin-keys button {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  font-size: 1.5rem;
+  height: 60px;
+  border: none;
+  border-radius: 12px;
+  background: none;
+  font-size: 1.9rem;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  /* Sin el resaltado azul del navegador al tocar: basta el estado :active */
+  -webkit-tap-highlight-color: transparent;
 }
 
-.pin-keys button:hover:not(:disabled) {
-  border-color: var(--accent);
+/* Solo con mouse: en pantallas táctiles el hover se queda pegado tras tocar */
+@media (hover: hover) {
+  .pin-keys button:hover:not(:disabled) {
+    background: var(--surface-2);
+  }
 }
 
 .pin-keys button:active:not(:disabled) {
   background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .pin-keys button:disabled {
@@ -1555,8 +1565,6 @@ fieldset.picker {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: none;
-  border-color: transparent;
   color: var(--muted);
 }
 

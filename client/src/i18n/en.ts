@@ -161,7 +161,7 @@ export const en: Messages = {
   'settings.sourceCode': 'Source code',
 
   'quickUnlock.title': 'Quick unlock',
-  'quickUnlock.help': 'Unlock the vault on this device with a 6-digit PIN or a pattern instead of your master password. It only works while the session stays open: signing in always asks for the password. It turns off after 5 failed attempts.',
+  'quickUnlock.help': 'Unlock the vault on this device with a 6-digit PIN or a pattern instead of your master password. It stays set up when you sign out, but signing in always asks for the password. It turns off after 5 failed attempts.',
   'quickUnlock.usePin': 'Use a 6-digit PIN',
   'quickUnlock.usePattern': 'Use a pattern',
   'quickUnlock.onPin': 'On for this device with a 6-digit PIN.',

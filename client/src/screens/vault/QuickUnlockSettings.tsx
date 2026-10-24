@@ -11,18 +11,14 @@ import {
   isWeakPin,
   loadQuickRecord,
   PATTERN_MIN,
-  type QuickMethod
+  type QuickMethod,
+  type QuickRecord
 } from '../../crypto/quickUnlock'
 import { errorMessage, useI18n } from '../../i18n'
 
-interface Props {
-  account: Account
-  onChanged: () => Promise<void>
-}
-
-export function QuickUnlockSettings({ account, onChanged }: Props) {
+export function QuickUnlockSettings({ account }: { account: Account }) {
   const { t } = useI18n()
-  const record = loadQuickRecord(account)
+  const [record, setRecord] = useState(() => loadQuickRecord(account))
   const [setup, setSetup] = useState<QuickMethod | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -31,8 +27,8 @@ export function QuickUnlockSettings({ account, onChanged }: Props) {
     setError('')
     setBusy(true)
     try {
-      await disableQuickUnlock()
-      await onChanged()
+      await disableQuickUnlock(record!)
+      setRecord(null)
     } catch (err) {
       setError(errorMessage(t, err))
     }
@@ -76,9 +72,10 @@ export function QuickUnlockSettings({ account, onChanged }: Props) {
         <QuickSetup
           account={account}
           method={setup}
+          previous={record}
           onClose={() => setSetup(null)}
-          onDone={async () => {
-            await onChanged()
+          onDone={(next) => {
+            setRecord(next)
             setSetup(null)
           }}
         />
@@ -92,13 +89,15 @@ type Step = { name: 'password' } | { name: 'create' } | { name: 'confirm'; first
 function QuickSetup({
   account,
   method,
+  previous,
   onClose,
   onDone
 }: {
   account: Account
   method: QuickMethod
+  previous: QuickRecord | null
   onClose: () => void
-  onDone: () => Promise<void>
+  onDone: (record: QuickRecord) => void
 }) {
   const { t } = useI18n()
   const [step, setStep] = useState<Step>({ name: 'password' })
@@ -145,8 +144,7 @@ function QuickSetup({
     if (secret !== step.first) return restart(t('quickUnlock.mismatch'))
     setStep({ name: 'saving' })
     try {
-      await enableQuickUnlock(account, master!, method, secret)
-      await onDone()
+      onDone(await enableQuickUnlock(account, master!, method, secret, previous))
     } catch (err) {
       restart(errorMessage(t, err))
     }

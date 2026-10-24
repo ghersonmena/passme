@@ -1,5 +1,15 @@
 # Cambios
 
+## v0.1.6
+
+- El PIN o patrón ya no se pierde al cerrar sesión: queda ligado al dispositivo. Para iniciar sesión
+  se sigue pidiendo la contraseña maestra
+- Cada dispositivo tiene su propio PIN o patrón; cambiar la contraseña maestra conserva el del
+  dispositivo actual y revoca los demás
+- Teclado del PIN rediseñado (estilo minimal): solo los números grandes, sin teclas dibujadas
+- Desarrollo: la base de datos de docker-compose.dev.yml ya no reemplaza a la de producción
+- Quien tenía el desbloqueo rápido de la v0.1.5 debe activarlo una vez más
+
 ## v0.1.5
 
 - Desbloqueo rápido opcional por dispositivo con PIN de 6 dígitos o patrón, a elegir en Ajustes

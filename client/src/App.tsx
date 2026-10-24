@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError, type Account, type ServerConfig } from './api/client'
 import { Spinner } from './components/ui'
-import { clearQuickRecord } from './crypto/quickUnlock'
 import { I18nProvider, useI18n } from './i18n'
 import { useAutoLock } from './state/autolock'
 import { applyTheme, loadPrefs, savePrefs, type Prefs } from './state/prefs'
@@ -82,8 +81,6 @@ function Root({ prefs, onPrefs }: { prefs: Prefs; onPrefs: (p: Prefs) => void })
   }, [])
 
   const logout = useCallback(async () => {
-    // El desbloqueo rápido muere con la sesión: no se deja nada en el dispositivo
-    clearQuickRecord()
     await api.logout().catch(() => {})
     setPhase({ name: 'login' })
   }, [])

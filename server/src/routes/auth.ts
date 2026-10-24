@@ -198,6 +198,8 @@ export async function authRoutes(app: FastifyInstance, ctx: Context): Promise<vo
           protected_user_key = ${body.protectedUserKey}, failed_logins = 0, locked_until = NULL, updated_at = now()
         WHERE id = ${session.userId}`
       await tx`DELETE FROM sessions WHERE user_id = ${session.userId}`
+      // Quien recupera la cuenta puede sospechar de un dispositivo: se revocan todos los PIN
+      await tx`DELETE FROM quick_unlock_devices WHERE user_id = ${session.userId}`
     })
     clearSessionCookie(reply)
     return { ok: true }

@@ -159,7 +159,7 @@ export const es = {
   'settings.sourceCode': 'Código fuente',
 
   'quickUnlock.title': 'Desbloqueo rápido',
-  'quickUnlock.help': 'Desbloquea la bóveda en este dispositivo con un PIN de 6 dígitos o un patrón en lugar de la contraseña maestra. Solo funciona mientras la sesión siga abierta: para iniciar sesión siempre se pide la contraseña. Tras 5 intentos fallidos se desactiva.',
+  'quickUnlock.help': 'Desbloquea la bóveda en este dispositivo con un PIN de 6 dígitos o un patrón en lugar de la contraseña maestra. Se conserva aunque cierres sesión, pero para iniciar sesión siempre se pide la contraseña. Tras 5 intentos fallidos se desactiva.',
   'quickUnlock.usePin': 'Usar PIN de 6 dígitos',
   'quickUnlock.usePattern': 'Usar patrón',
   'quickUnlock.onPin': 'Activado en este dispositivo con un PIN de 6 dígitos.',

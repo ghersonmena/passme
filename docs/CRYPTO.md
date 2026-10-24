@@ -72,26 +72,28 @@ respaldo.
 
 ## Desbloqueo rápido (PIN o patrón)
 
-Opcional y por dispositivo. Sirve solo para desbloquear con la sesión abierta; iniciar sesión
-siempre pide la contraseña maestra.
+Opcional y por dispositivo. Sirve solo para desbloquear con una sesión abierta; iniciar sesión
+siempre pide la contraseña maestra (y el 2FA). Se conserva al cerrar sesión.
 
 ```
 PIN (6 dígitos) o patrón ─Argon2id(sal local secreta)→ HKDF → verificador (al servidor) + pinKey
-servidor: share aleatorio de 256 bits, guardado cifrado con SERVER_SECRET y ligado a la sesión
+servidor: share aleatorio de 256 bits, guardado cifrado con SERVER_SECRET (quick_unlock_devices)
 dispositivo: AES-GCM(pinKey, AES-GCM(share, llave de usuario))
 ```
 
 - Activarlo pide la contraseña maestra: la llave de usuario solo existe en memoria como `CryptoKey`
   no exportable, y para guardarla hace falta volver a descifrarla.
-- Para desbloquear, el navegador manda el verificador y el servidor devuelve el `share` si coincide.
+- Para desbloquear, el navegador manda el verificador y el servidor devuelve el `share` si coincide
+  y la petición viene de una sesión abierta de la misma cuenta.
   Cada intento se cuenta **antes** de comprobarlo; al quinto fallo el servidor borra el `share` y el
   desbloqueo rápido deja de existir.
 - Quien robe el dispositivo tiene la sal y el blob, pero no el `share`: no puede probar el millón de
-  PINs sin pasar por el servidor (5 intentos).
+  PINs sin pasar por el servidor (5 intentos), y si la sesión está cerrada necesita además la
+  contraseña maestra para abrir una.
 - El servidor no puede adivinar el PIN a partir del verificador porque no conoce la sal, que nunca
   sale del dispositivo.
-- Cerrar sesión, que la sesión venza o cambiar la contraseña desde otro dispositivo (que cierra las
-  demás sesiones) lo desactiva.
+- Cambiar la contraseña maestra revoca el desbloqueo rápido de los demás dispositivos (conserva el
+  del dispositivo desde el que se cambia). Recuperar la cuenta con la frase los revoca todos.
 - Se rechazan PINs triviales (todos iguales o escaleras).
 
 ## Lo que el servidor sí ve

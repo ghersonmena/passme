@@ -52,8 +52,6 @@ export interface Account {
   protectedUserKey: string
   publicKey: string
   protectedPrivateKey: string
-  // Desbloqueo rápido activo en esta sesión (este dispositivo)
-  quickUnlock: boolean
 }
 
 export interface EncryptedVault {
@@ -86,17 +84,18 @@ export const api = {
     request<{ ok: true }>('POST', '/auth/recover/reset', { token, ...next }),
 
   account: () => request<Account>('GET', '/account'),
-  changePassword: (currentAuthKey: string, next: NewPassword) =>
-    request<{ ok: true }>('POST', '/account/password', { currentAuthKey, ...next }),
+  changePassword: (currentAuthKey: string, next: NewPassword, keepQuickUnlock?: string) =>
+    request<{ ok: true }>('POST', '/account/password', { currentAuthKey, ...next, keepQuickUnlock }),
   totpSetup: (authKey: string) => request<{ secret: string; uri: string }>('POST', '/account/totp/setup', { authKey }),
   totpEnable: (code: string) => request<{ backupCodes: string[] }>('POST', '/account/totp/enable', { code }),
   totpDisable: (authKey: string, code: string) =>
     request<{ ok: true }>('POST', '/account/totp/disable', { authKey, code }),
 
-  enableQuickUnlock: (authKey: string, verifier: string) =>
-    request<{ share: string }>('POST', '/account/quick-unlock', { authKey, verifier }),
-  disableQuickUnlock: () => request<{ ok: true }>('DELETE', '/account/quick-unlock'),
-  openQuickUnlock: (verifier: string) => request<{ share: string }>('POST', '/account/quick-unlock/open', { verifier }),
+  enableQuickUnlock: (authKey: string, verifier: string, replace?: string) =>
+    request<{ id: string; share: string }>('POST', '/account/quick-unlock', { authKey, verifier, replace }),
+  disableQuickUnlock: (id: string) => request<{ ok: true }>('DELETE', `/account/quick-unlock/${id}`),
+  openQuickUnlock: (id: string, verifier: string) =>
+    request<{ share: string }>('POST', `/account/quick-unlock/${id}/open`, { verifier }),
 
   vaults: () => request<EncryptedVault[]>('GET', '/vaults'),
   createVault: (id: string, data: string, protectedVaultKey: string) =>

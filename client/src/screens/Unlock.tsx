@@ -52,8 +52,8 @@ export function Unlock({ account, onUnlocked, onLogout }: Props) {
       if (err instanceof ApiError && err.code === 'wrong_pin') {
         setError(t('quickUnlock.wrong', { n: err.extra.attemptsLeft ?? 0 }))
       } else if (err instanceof ApiError && err.code === 'quick_unlock_off') {
-        // Se agotaron los intentos: a partir de aquí solo con la contraseña maestra
-        clearQuickRecord()
+        // Se agotaron los intentos o se revocó: a partir de aquí solo con la contraseña maestra
+        clearQuickRecord(account.id)
         setRecord(null)
         setError(t('quickUnlock.off'))
       } else {

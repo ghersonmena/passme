@@ -234,46 +234,62 @@ describe.skipIf(!DB)('API de punta a punta', () => {
     expect(((await c.call('GET', '/vaults')).body as unknown as unknown[]).length).toBe(1)
   })
 
-  it('desbloqueo rápido: pide la contraseña, limita los intentos y muere con la sesión', async () => {
+  it('desbloqueo rápido: pide la contraseña, limita los intentos y sobrevive al cerrar sesión', async () => {
     const c = new Client(app)
     const { payload } = await createAccount('dani@example.com', password, newRecoveryPhrase(), 'Personal')
     await c.call('POST', '/auth/register', payload)
     const verifier = Buffer.alloc(32, 1).toString('base64')
     const wrong = Buffer.alloc(32, 2).toString('base64')
-    expect((await c.call('GET', '/account')).body.quickUnlock).toBe(false)
 
     // Sin la contraseña maestra no se activa
     const denied = await c.call('POST', '/account/quick-unlock', { authKey: wrong, verifier })
     expect(denied.body.error).toBe('invalid_password')
 
     const enabled = await c.call('POST', '/account/quick-unlock', { authKey: payload.authKey, verifier })
-    const share = enabled.body.share as string
+    const { id, share } = enabled.body as { id: string; share: string }
     expect(share).toMatch(/^[A-Za-z0-9+/]{43}=$/)
-    expect((await c.call('GET', '/account')).body.quickUnlock).toBe(true)
     // La mitad del servidor se guarda cifrada con SERVER_SECRET
-    const [row] = await sql`SELECT quick_unlock_share FROM sessions WHERE quick_unlock_share IS NOT NULL`
-    expect(row!.quick_unlock_share).not.toBe(share)
+    const [row] = await sql`SELECT share FROM quick_unlock_devices WHERE id = ${id}`
+    expect(row!.share).not.toBe(share)
 
-    const bad = await c.call('POST', '/account/quick-unlock/open', { verifier: wrong })
-    expect(bad.body).toEqual({ error: 'wrong_pin', attemptsLeft: 4 })
+    const open = (v: string, client = c, device = id) => client.call('POST', `/account/quick-unlock/${device}/open`, { verifier: v })
+    expect((await open(wrong)).body).toEqual({ error: 'wrong_pin', attemptsLeft: 4 })
     // Un acierto devuelve la mitad y reinicia el contador
-    expect((await c.call('POST', '/account/quick-unlock/open', { verifier })).body.share).toBe(share)
-    for (const left of [4, 3, 2, 1]) {
-      expect((await c.call('POST', '/account/quick-unlock/open', { verifier: wrong })).body.attemptsLeft).toBe(left)
-    }
-    // El quinto fallo lo desactiva; ni el verificador correcto sirve después
-    expect((await c.call('POST', '/account/quick-unlock/open', { verifier: wrong })).body.error).toBe('quick_unlock_off')
-    expect((await c.call('POST', '/account/quick-unlock/open', { verifier })).body.error).toBe('quick_unlock_off')
-    expect((await c.call('GET', '/account')).body.quickUnlock).toBe(false)
+    expect((await open(verifier)).body.share).toBe(share)
 
-    // Otra sesión no hereda el desbloqueo rápido, y cerrar sesión lo borra
-    await c.call('POST', '/account/quick-unlock', { authKey: payload.authKey, verifier })
-    const other = new Client(app)
-    await other.call('POST', '/auth/login', { email: 'dani@example.com', authKey: payload.authKey })
-    expect((await other.call('GET', '/account')).body.quickUnlock).toBe(false)
-    expect((await other.call('POST', '/account/quick-unlock/open', { verifier })).body.error).toBe('quick_unlock_off')
+    // Cerrar sesión no lo borra: con una sesión nueva (contraseña de nuevo) sigue sirviendo
     await c.call('POST', '/auth/logout', {})
-    expect((await c.call('POST', '/account/quick-unlock/open', { verifier })).status).toBe(401)
+    expect((await open(verifier)).status).toBe(401)
+    await c.call('POST', '/auth/login', { email: 'dani@example.com', authKey: payload.authKey })
+    expect((await open(verifier)).body.share).toBe(share)
+
+    // Otra cuenta no puede usar el dispositivo de Dani
+    expect((await open(verifier, new Client(app))).status).toBe(401)
+    const beto = new Client(app)
+    const { payload: other } = await createAccount('eli@example.com', password, newRecoveryPhrase(), 'Personal')
+    await beto.call('POST', '/auth/register', other)
+    expect((await open(verifier, beto)).body.error).toBe('quick_unlock_off')
+
+    for (const left of [4, 3, 2, 1]) expect((await open(wrong)).body.attemptsLeft).toBe(left)
+    // El quinto fallo lo borra; ni el verificador correcto sirve después
+    expect((await open(wrong)).body.error).toBe('quick_unlock_off')
+    expect((await open(verifier)).body.error).toBe('quick_unlock_off')
+
+    // Cambiar de PIN reemplaza el dispositivo anterior
+    const a = (await c.call('POST', '/account/quick-unlock', { authKey: payload.authKey, verifier })).body.id
+    const b = (await c.call('POST', '/account/quick-unlock', { authKey: payload.authKey, verifier, replace: a })).body.id
+    expect((await open(verifier, c, a)).body.error).toBe('quick_unlock_off')
+
+    // Cambiar la contraseña conserva el de este dispositivo y revoca los demás
+    const d = (await c.call('POST', '/account/quick-unlock', { authKey: payload.authKey, verifier })).body.id
+    const next = await rewrapUserKey(
+      (await deriveMasterKeys(password, payload.kdf)).encKey,
+      payload.protectedUserKey,
+      'otra contraseña maestra larga'
+    )
+    expect((await c.call('POST', '/account/password', { currentAuthKey: payload.authKey, ...next, keepQuickUnlock: b })).status).toBe(200)
+    expect((await open(verifier, c, b)).body.share).toBeTruthy()
+    expect((await open(verifier, c, d)).body.error).toBe('quick_unlock_off')
   })
 
   it('activa el 2FA y lo exige al iniciar sesión, sin aceptar códigos repetidos', async () => {

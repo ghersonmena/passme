@@ -9,6 +9,7 @@ import { errorMessage, useI18n } from '../../i18n'
 import { LOCK_OPTIONS, type Lang, type Prefs, type Theme } from '../../state/prefs'
 import { masterPasswordProblem, MIN_MASTER_LENGTH } from '../Register'
 import { QuickUnlockSettings } from './QuickUnlockSettings'
+import { loadQuickRecord } from '../../crypto/quickUnlock'
 
 const SOURCE_URL = 'https://github.com/ghersonmena/passme'
 
@@ -74,7 +75,7 @@ export function Settings({ account, prefs, onPrefs, onAccountChanged, onLogout }
         <p className="hint">{t('settings.autoLockHelp')}</p>
       </div>
 
-      <QuickUnlockSettings account={account} onChanged={onAccountChanged} />
+      <QuickUnlockSettings account={account} />
       <TwoFactor account={account} onChanged={onAccountChanged} />
       <ChangePassword account={account} onChanged={onAccountChanged} />
 
@@ -331,7 +332,8 @@ function ChangePassword({ account, onChanged }: { account: Account; onChanged: (
     try {
       const old = await deriveMasterKeys(current, account.kdf)
       const next = await rewrapUserKey(old.encKey, account.protectedUserKey, password)
-      await api.changePassword(old.authKey, next)
+      // El PIN de este dispositivo se conserva; el de los demás se revoca
+      await api.changePassword(old.authKey, next, loadQuickRecord(account)?.deviceId)
       setCurrent('')
       setPassword('')
       setConfirm('')
