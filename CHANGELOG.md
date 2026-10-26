@@ -1,5 +1,13 @@
 # Cambios
 
+## v0.1.8
+
+- Deslizar un elemento de la lista hacia la derecha lo manda a la papelera, con un aviso para
+  deshacer
+- Deslizar hacia la izquierda lo marca como favorito, o se lo quita si ya lo era
+- Funciona con el dedo y con el mouse; un deslizamiento corto o vertical no hace nada, y en la
+  papelera o en bóvedas de solo lectura no se puede deslizar
+
 ## v0.1.7
 
 - Importar desde Proton Pass (.zip o .json), Bitwarden (.json), y CSV de Passbolt, Bitwarden,

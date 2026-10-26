@@ -468,5 +468,10 @@ export const en: Messages = {
   'export.warning': 'The file is unencrypted: anyone who opens it will see your passwords. Delete it as soon as you import it.',
   'export.submit': 'Download',
   'export.done': 'Downloaded {name} with {n} item(s).',
-  'export.left': '{n} item(s) that are not logins were left out.'
+  'export.left': '{n} item(s) that are not logins were left out.',
+  'common.undo': 'Undo',
+  'swipe.trash': 'Trash',
+  'swipe.favorite': 'Favorite',
+  'swipe.unfavorite': 'Unfavorite',
+  'swipe.trashed': '“{name}” moved to the trash'
 }

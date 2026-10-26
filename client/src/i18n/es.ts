@@ -466,7 +466,12 @@ export const es = {
   'export.warning': 'El archivo queda sin cifrar: quien lo abra verá tus contraseñas. Bórralo en cuanto lo importes.',
   'export.submit': 'Descargar',
   'export.done': 'Se descargó {name} con {n} elemento(s).',
-  'export.left': '{n} elemento(s) que no son inicios de sesión no se incluyeron.'
+  'export.left': '{n} elemento(s) que no son inicios de sesión no se incluyeron.',
+  'common.undo': 'Deshacer',
+  'swipe.trash': 'Papelera',
+  'swipe.favorite': 'Favorito',
+  'swipe.unfavorite': 'Quitar favorito',
+  'swipe.trashed': '«{name}» se movió a la papelera'
 }
 
 export type Messages = Record<keyof typeof es, string>

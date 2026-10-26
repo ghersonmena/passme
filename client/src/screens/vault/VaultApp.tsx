@@ -7,11 +7,13 @@ import {
   Search,
   Settings as SettingsIcon,
   Star,
+  StarOff,
   Trash2,
   Wand2
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api } from '../../api/client'
+import { SwipeRow } from '../../components/SwipeRow'
 import { Logo, Modal, Spinner } from '../../components/ui'
 import { emptyItem, type Item, type ItemData, type ItemType } from '../../crypto/items'
 import type { VaultMeta } from '../../crypto/keys'
@@ -79,6 +81,9 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
   const [quickId, setQuickId] = useState<string | null>(null)
   const closeQuick = useCallback(() => setQuickId(null), [])
   const [error, setError] = useState('')
+  // Último elemento enviado a la papelera deslizando, para poder deshacerlo
+  const [undo, setUndo] = useState<Item | null>(null)
+  const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const { vaults } = session
   const vaultById = useMemo(() => new Map(vaults.map((v) => [v.id, v])), [vaults])
@@ -166,6 +171,32 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
     setSelectedId(saved.id)
     setEditing(null)
   }
+
+  // --- Gestos de la lista ---
+
+  function swipeTrash(item: Item) {
+    void act(async () => {
+      replace(await trashItem(session, item))
+      if (selectedId === item.id) setSelectedId(null)
+      if (quickId === item.id) setQuickId(null)
+      clearTimeout(undoTimer.current)
+      setUndo(item)
+      undoTimer.current = setTimeout(() => setUndo(null), 6000)
+    })
+  }
+
+  function undoTrash() {
+    const item = items?.find((i) => i.id === undo?.id)
+    clearTimeout(undoTimer.current)
+    setUndo(null)
+    if (item) void act(async () => replace(await restoreItem(session, item)))
+  }
+
+  function swipeFavorite(item: Item) {
+    void act(async () => replace(await updateItem(session, item, { ...item.data, favorite: !item.data.favorite })))
+  }
+
+  useEffect(() => () => clearTimeout(undoTimer.current), [])
 
   // --- Bóvedas ---
 
@@ -429,8 +460,32 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
                   {visible.map((item) => {
                     const def = TYPE_BY_ID[item.data.type]
                     const vault = vaultById.get(item.vaultId)
+                    // Deslizar: a la derecha manda a la papelera, a la izquierda marca como favorito
+                    const swipeable = view !== 'trash' && canWrite(vault)
                     return (
                       <li key={item.id}>
+                        <SwipeRow
+                          right={
+                            swipeable
+                              ? {
+                                  icon: <Trash2 size={20} />,
+                                  label: t('swipe.trash'),
+                                  className: 'trash',
+                                  run: () => swipeTrash(item)
+                                }
+                              : undefined
+                          }
+                          left={
+                            swipeable
+                              ? {
+                                  icon: item.data.favorite ? <StarOff size={20} /> : <Star size={20} />,
+                                  label: item.data.favorite ? t('swipe.unfavorite') : t('swipe.favorite'),
+                                  className: 'favorite',
+                                  run: () => swipeFavorite(item)
+                                }
+                              : undefined
+                          }
+                        >
                         <div className={`item-line ${item.id === selectedId ? 'on' : ''}`}>
                           <button
                             className="item-row"
@@ -463,6 +518,7 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
                             onToggle={() => setQuickId(quickId === item.id ? null : item.id)}
                           />
                         </div>
+                        </SwipeRow>
                         {quickId === item.id && <QuickPanel data={item.data} onClose={closeQuick} />}
                       </li>
                     )
@@ -489,6 +545,15 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
           />
         )}
       </div>
+
+      {undo && (
+        <div className="toast" role="status">
+          <span>{t('swipe.trashed', { name: undo.data.name || t('item.untitled') })}</span>
+          <button className="btn link" onClick={undoTrash}>
+            {t('common.undo')}
+          </button>
+        </div>
+      )}
 
       <nav className="bottom-nav" aria-label={t('nav.label')}>
         {NAV.map((n) => (

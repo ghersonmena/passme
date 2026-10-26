@@ -1370,6 +1370,97 @@ fieldset.picker {
   display: none;
 }
 
+/* --- Deslizar filas de la lista --- */
+
+.swipe {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  /* El navegador se queda con el desplazamiento vertical; lo horizontal es nuestro */
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.swipe-content {
+  position: relative;
+  background: var(--surface);
+  border-radius: 10px;
+}
+
+.swipe-bg {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 10px;
+  color: #fff;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+.swipe-bg.from-right {
+  justify-content: flex-end;
+}
+
+.swipe[data-dir='right'] .from-left,
+.swipe[data-dir='left'] .from-right {
+  display: flex;
+}
+
+.swipe.armed .swipe-bg {
+  opacity: 1;
+}
+
+.swipe-bg.trash {
+  background: #c0362c;
+}
+
+.swipe-bg.favorite {
+  background: #d99a00;
+}
+
+.swipe.armed .swipe-bg svg {
+  animation: swipe-pop 0.2s ease;
+}
+
+@keyframes swipe-pop {
+  50% {
+    transform: scale(1.25);
+  }
+}
+
+/* --- Aviso con opción de deshacer --- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 50;
+  width: max-content;
+  max-width: calc(100% - 2rem);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 0.6rem 0.6rem 1rem;
+  border-radius: 12px;
+  background: var(--text);
+  color: var(--bg);
+  box-shadow: var(--shadow);
+  font-size: 0.9rem;
+}
+
+.toast .btn.link {
+  color: var(--bg);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 /* --- Teléfono --- */
 
 @media (max-width: 760px) {
@@ -1454,6 +1545,11 @@ fieldset.picker {
 
   .auth-card {
     padding: 1.5rem 1.25rem;
+  }
+
+  /* Encima de la barra de navegación */
+  .toast {
+    bottom: calc(4.75rem + env(safe-area-inset-bottom));
   }
 
   .phrase-grid {
