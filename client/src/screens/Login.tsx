@@ -140,7 +140,7 @@ export function Login({ config, initialEmail, notice, onUnlocked, onRegister, on
         <button type="button" className="btn link" onClick={onRecover}>
           {t('login.forgot')}
         </button>
-        {config.registration !== 'closed' && (
+        {config.registration !== 'invite' && (
           <button type="button" className="btn link" onClick={onRegister}>
             {config.registration === 'first' ? t('login.createAdmin') : t('login.createAccount')}
           </button>

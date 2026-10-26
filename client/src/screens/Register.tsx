@@ -1,6 +1,6 @@
 import { Download } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
-import { api, type ServerConfig } from '../api/client'
+import { api, type Invite, type ServerConfig } from '../api/client'
 import { CopyButton, ErrorText, Field, PasswordField, PasswordStrength, Spinner } from '../components/ui'
 import { estimatePasswordBits, randomInt, strengthFromBits } from '../crypto/generator'
 import { createAccount, newRecoveryPhrase } from '../crypto/keys'
@@ -20,16 +20,18 @@ export function masterPasswordProblem(t: Translate, password: string, confirm: s
 
 interface Props {
   config: ServerConfig
+  // Al llegar por un enlace de invitación, el correo ya viene puesto
+  invite?: Invite
   onUnlocked: (session: Unlocked) => void
   onCancel: () => void
 }
 
 type Step = 'form' | 'phrase' | 'verify'
 
-export function Register({ config, onUnlocked, onCancel }: Props) {
+export function Register({ config, invite, onUnlocked, onCancel }: Props) {
   const { t } = useI18n()
   const [step, setStep] = useState<Step>('form')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(invite?.email ?? '')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [accepted, setAccepted] = useState(false)
@@ -77,7 +79,7 @@ export function Register({ config, onUnlocked, onCancel }: Props) {
     try {
       setBusy(t('register.creating'))
       const { payload, encKey } = await createAccount(email.trim().toLowerCase(), password, phrase, t('vault.defaultName'))
-      await api.register(payload)
+      await api.register(payload, invite?.token)
       setBusy(t('login.opening'))
       onUnlocked(await openSession(await api.account(), encKey))
     } catch (err) {
@@ -153,7 +155,7 @@ export function Register({ config, onUnlocked, onCancel }: Props) {
   return (
     <AuthLayout
       title={config.registration === 'first' ? t('register.adminTitle') : t('register.title')}
-      subtitle={t('register.subtitle')}
+      subtitle={invite ? t('register.invited') : t('register.subtitle')}
     >
       <form onSubmit={submitForm} className="stack">
         <Field
@@ -162,7 +164,8 @@ export function Register({ config, onUnlocked, onCancel }: Props) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="username"
-          autoFocus
+          autoFocus={!invite}
+          readOnly={!!invite}
           required
         />
         <PasswordField

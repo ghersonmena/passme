@@ -19,7 +19,8 @@ contraseña maestra.
 - Importar desde Proton Pass, Passbolt, Bitwarden, 1Password, LastPass, KeePass(XC), Dashlane,
   NordPass y navegadores; exportar a PassMe, Bitwarden (JSON o CSV) y CSV de navegador
 - Bloqueo automático configurable (5 min por defecto) y portapapeles que se vacía a los 30 s
-- Varios usuarios por servidor, con registro abierto o cerrado
+- Varios usuarios por servidor: registro abierto o solo por invitación del administrador, con el
+  enlace enviado por correo
 - Interfaz en español e inglés, instalable en el teléfono
 
 Próximas versiones: códigos TOTP por elemento, monitor de seguridad, bóvedas compartidas y
@@ -50,8 +51,9 @@ La app queda en `https://<tu-servidor>:4040`. Si `./certs` está vacío se gener
 autofirmado; para uno real coloca `fullchain.crt` y `privkey.key` en `./certs` y reinicia el
 contenedor `web`.
 
-La primera cuenta que se crea es la del administrador. Con `REGISTRATION=closed` nadie más puede
-registrarse después.
+La primera cuenta que se crea es la del administrador. Desde **Ajustes → Usuarios e invitaciones**
+elige si el registro es abierto o solo por invitación, e invita por correo (configura `SMTP_*` en
+`.env`; sin correo, la app te da el enlace para compartirlo).
 
 > **Importante:** respalda `.env` (contiene `SERVER_SECRET`) y la carpeta `data/`. Sin
 > `SERVER_SECRET`, quienes tengan 2FA tendrán que entrar con sus códigos de respaldo.

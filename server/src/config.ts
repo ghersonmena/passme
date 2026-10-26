@@ -12,15 +12,30 @@ function parseSecret(raw: string): Buffer {
   return secret
 }
 
-export type RegistrationMode = 'open' | 'closed'
+// open: cualquiera crea su cuenta · invite: solo con una invitación del administrador
+export type RegistrationMode = 'open' | 'invite'
+
+export interface SmtpConfig {
+  host: string
+  port: number
+  user: string
+  pass: string
+  from: string
+}
 
 export interface Config {
   port: number
   host: string
   databaseUrl: string
   serverSecret: Buffer
-  // closed: solo se puede crear la primera cuenta (la del administrador)
+  // Modo inicial; el administrador lo puede cambiar desde la app. La primera cuenta siempre se
+  // puede crear (es la del administrador).
   registration: RegistrationMode
+  // Para mandar invitaciones por correo; sin él se comparte el enlace a mano
+  smtp: SmtpConfig | null
+  // Dirección pública de la app, para los enlaces de los correos. Si falta, se usa la del navegador
+  // del administrador (útil con túneles cuya URL cambia).
+  publicUrl: string | null
   // Cuántos proxies hay delante de la API (nginx = 1). Determina de dónde sale la IP real
   trustProxy: number
   sessionTtlDays: number
@@ -34,7 +49,18 @@ export function loadConfig(): Config {
     host: process.env.HOST ?? '0.0.0.0',
     databaseUrl: required('DATABASE_URL'),
     serverSecret: parseSecret(required('SERVER_SECRET')),
-    registration: process.env.REGISTRATION === 'open' ? 'open' : 'closed',
+    // "closed" es el nombre que tenía "invite" antes de la v0.2.0
+    registration: process.env.REGISTRATION === 'open' ? 'open' : 'invite',
+    smtp: process.env.SMTP_HOST
+      ? {
+          host: process.env.SMTP_HOST,
+          port: Number(process.env.SMTP_PORT ?? 587),
+          user: process.env.SMTP_USER ?? '',
+          pass: process.env.SMTP_PASS ?? '',
+          from: process.env.SMTP_FROM || process.env.SMTP_USER || 'PassMe <passme@localhost>'
+        }
+      : null,
+    publicUrl: process.env.PUBLIC_URL?.replace(/\/+$/, '') || null,
     trustProxy: Number(process.env.TRUST_PROXY ?? 1),
     sessionTtlDays: Number(process.env.SESSION_TTL_DAYS ?? 14),
     authRateLimit: Number(process.env.AUTH_RATE_LIMIT ?? 10)

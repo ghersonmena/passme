@@ -13,6 +13,7 @@ import { loadQuickRecord } from '../../crypto/quickUnlock'
 import type { Item } from '../../crypto/items'
 import type { OpenVault, Unlocked } from '../../state/session'
 import { TransferSettings } from './Transfer'
+import { AdminSettings } from './AdminSettings'
 
 const SOURCE_URL = 'https://github.com/ghersonmena/passme'
 
@@ -81,6 +82,7 @@ export function Settings({ session, items, onImported, prefs, onPrefs, onAccount
         <p className="hint">{t('settings.autoLockHelp')}</p>
       </div>
 
+      {account.isAdmin && <AdminSettings />}
       <TransferSettings session={session} items={items} onImported={onImported} />
       <QuickUnlockSettings account={account} />
       <TwoFactor account={account} onChanged={onAccountChanged} />

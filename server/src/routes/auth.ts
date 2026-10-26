@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { DAY, MINUTE, type Context } from '../context.js'
 import { base64, blob, DEFAULT_KDF, email, HttpError, kdf, key32, parse, uuid } from '../http.js'
+import { findInvite, registrationMode } from '../invitations.js'
 import { burnVerifyTime, hashSecret, hashToken, verifySecret } from '../security.js'
 import {
   clearSessionCookie,
@@ -27,7 +28,9 @@ const registerSchema = z.object({
   recoveryProtectedUserKey: blob(200),
   publicKey: base64(400),
   protectedPrivateKey: blob(500),
-  vault: z.object({ id: uuid, data: blob(4000), protectedVaultKey: blob(200) })
+  vault: z.object({ id: uuid, data: blob(4000), protectedVaultKey: blob(200) }),
+  // Token del enlace de invitación; obligatorio si el registro es solo por invitación
+  invite: z.string().max(100).optional()
 })
 
 const loginSchema = z.object({ email, authKey: key32 })
@@ -59,8 +62,16 @@ export async function authRoutes(app: FastifyInstance, ctx: Context): Promise<vo
   }
 
   app.get('/config', async () => {
-    const registration = (await userCount()) === 0 ? 'first' : config.registration
+    const registration = (await userCount()) === 0 ? 'first' : await registrationMode(sql, config)
     return { version: ctx.version, registration }
+  })
+
+  // Para el formulario de registro: a qué correo es la invitación del enlace
+  app.get('/invite/:token', { config: strict }, async (req) => {
+    const { token } = parse(z.object({ token: z.string().max(100) }), req.params)
+    const invite = await findInvite(sql, token)
+    if (!invite) throw new HttpError(404, 'invite_invalid')
+    return { email: invite.email }
   })
 
   // Parámetros para derivar la llave maestra. Para correos que no existen se responde una sal
@@ -85,7 +96,15 @@ export async function authRoutes(app: FastifyInstance, ctx: Context): Promise<vo
       await tx`SELECT pg_advisory_xact_lock(1)`
       const [row] = await tx<{ count: number }[]>`SELECT count(*)::int AS count FROM users`
       const first = (row?.count ?? 0) === 0
-      if (!first && config.registration !== 'open') throw new HttpError(403, 'registration_closed')
+      if (!first && body.invite) {
+        // La invitación es para un correo concreto y sirve una sola vez
+        const invite = await findInvite(tx, body.invite, true)
+        if (!invite) throw new HttpError(403, 'invite_invalid')
+        if (invite.email !== body.email) throw new HttpError(403, 'invite_email')
+        await tx`UPDATE invitations SET used_at = now() WHERE id = ${invite.id}`
+      } else if (!first && (await registrationMode(sql, config)) !== 'open') {
+        throw new HttpError(403, 'registration_closed')
+      }
 
       const inserted = await tx`
         INSERT INTO users (

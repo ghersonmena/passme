@@ -1,5 +1,18 @@
 # Cambios
 
+## v0.2.0
+
+- Varios usuarios: el administrador elige en Ajustes si el registro es abierto o solo por invitación
+- Invitaciones por correo: el enlace sirve una sola vez, solo para ese correo, y vence en 7 días; se
+  pueden reenviar o revocar
+- Sin correo configurado, la app da el enlace para compartirlo a mano. Correo por SMTP (Gmail, etc.)
+  con las variables SMTP_* de .env
+- Lista de usuarios del servidor para el administrador
+- Nuevo diseño de las pantallas de acceso (login, registro, desbloqueo): panel de marca a la
+  izquierda en escritorio y arriba en el teléfono
+- Migración 004: tablas settings e invitations. REGISTRATION=closed ahora se llama invite (el valor
+  viejo sigue funcionando)
+
 ## v0.1.9
 
 - Ubicaciones secretas con mapa (OpenStreetMap): toca el mapa, arrastra el marcador, busca una

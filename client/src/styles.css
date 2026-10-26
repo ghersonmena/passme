@@ -15,6 +15,8 @@
   --warning-soft: #fff3d6;
   --ok: #15803d;
   --radius: 12px;
+  /* Panel de marca de las pantallas de acceso */
+  --brand-deep: #3b0f49;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.05);
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
@@ -39,6 +41,7 @@
     --warning-soft: #33280f;
     --ok: #4ade80;
     --shadow: none;
+    --brand-deep: #2a1233;
     color-scheme: dark;
   }
 }
@@ -59,6 +62,7 @@
   --warning-soft: #33280f;
   --ok: #4ade80;
   --shadow: none;
+  --brand-deep: #2a1233;
   color-scheme: dark;
 }
 
@@ -274,6 +278,12 @@ select {
   background: var(--surface);
 }
 
+/* Correo fijo de una invitación, enlaces para copiar */
+input[readonly] {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
 input:not([type='checkbox'], [type='range']):focus,
 textarea:focus,
 select:focus {
@@ -435,17 +445,23 @@ fieldset.urls .input-row {
   padding: 1.5rem 1rem;
 }
 
-.auth-card {
-  width: 100%;
-  max-width: 440px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 2rem 1.75rem;
-  box-shadow: var(--shadow);
+/* --- Pantallas de acceso: panel de marca + formulario --- */
+
+.auth-split {
+  min-height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+}
+
+.auth-side {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: calc(1.25rem + env(safe-area-inset-top)) 1.25rem 1.5rem;
+  background: var(--brand-deep);
+  color: #d8c2df;
 }
 
 .auth-brand {
@@ -454,7 +470,126 @@ fieldset.urls .input-row {
   gap: 0.6rem;
   font-weight: 700;
   font-size: 1.15rem;
-  margin-bottom: 0.5rem;
+  color: #fff;
+}
+
+.auth-pitch {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.auth-pitch h2 {
+  margin: 0.25rem 0 0;
+  max-width: 22ch;
+  font-size: 1.4rem;
+  line-height: 1.15;
+  color: #fff;
+  text-wrap: balance;
+}
+
+.auth-pitch p {
+  margin: 0;
+  max-width: 36ch;
+  font-size: 0.88rem;
+}
+
+.auth-facts {
+  display: none;
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 0.55rem;
+  font-size: 0.9rem;
+  color: #ead9ef;
+}
+
+.auth-facts li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.auth-facts svg {
+  color: #e3b3f2;
+}
+
+.auth-rings {
+  position: absolute;
+  right: -70px;
+  bottom: -90px;
+  width: 230px;
+  height: 230px;
+  fill: none;
+  stroke: #e3b3f2;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.auth-main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 1.75rem 1.25rem calc(1.75rem + env(safe-area-inset-bottom));
+  background: var(--surface);
+}
+
+.auth-form {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth-form h1 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.auth-form > .muted {
+  margin: -0.5rem 0 0;
+}
+
+@media (min-width: 860px) {
+  .auth-split {
+    flex-direction: row;
+  }
+
+  .auth-side {
+    width: 42%;
+    max-width: 560px;
+    flex-shrink: 0;
+    justify-content: space-between;
+    padding: 2.75rem 3rem;
+  }
+
+  .auth-pitch h2 {
+    max-width: 16ch;
+    font-size: 2.1rem;
+  }
+
+  .auth-pitch p {
+    font-size: 0.95rem;
+  }
+
+  .auth-facts {
+    display: grid;
+  }
+
+  .auth-rings {
+    width: 360px;
+    height: 360px;
+    right: -110px;
+    bottom: -130px;
+  }
+
+  .auth-main {
+    align-items: center;
+    padding: 3rem;
+  }
 }
 
 .logo {
@@ -1543,10 +1678,6 @@ fieldset.picker {
     color: var(--accent);
   }
 
-  .auth-card {
-    padding: 1.5rem 1.25rem;
-  }
-
   /* Encima de la barra de navegación */
   .toast {
     bottom: calc(4.75rem + env(safe-area-inset-bottom));
@@ -1868,4 +1999,50 @@ fieldset.tight legend {
 
 .modal:has(.map-dialog) {
   width: min(640px, calc(100% - 2rem));
+}
+
+/* --- Administración --- */
+
+.card h4 {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+}
+
+.invite-form,
+.invite-sent {
+  align-self: stretch;
+}
+
+.invite-sent .input-row input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+}
+
+.admin-list {
+  align-self: stretch;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.admin-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.55rem 0.5rem 0.55rem 0.85rem;
+}
+
+.admin-list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.admin-who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-wrap: anywhere;
 }

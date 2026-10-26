@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance } from 'fastify'
 import type { Context } from './context.js'
 import { HttpError } from './http.js'
 import { accountRoutes } from './routes/account.js'
+import { adminRoutes } from './routes/admin.js'
 import { authRoutes } from './routes/auth.js'
 import { vaultRoutes } from './routes/vault.js'
 
@@ -54,6 +55,7 @@ export async function buildApp(ctx: Context, logger: boolean | object = true): P
       await api.register(async (scope) => authRoutes(scope, ctx))
       await api.register(async (scope) => accountRoutes(scope, ctx))
       await api.register(async (scope) => vaultRoutes(scope, ctx))
+      await api.register(async (scope) => adminRoutes(scope, ctx))
     },
     { prefix: '/api' }
   )

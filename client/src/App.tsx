@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { api, ApiError, type Account, type ServerConfig } from './api/client'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { api, ApiError, type Account, type Invite, type ServerConfig } from './api/client'
 import { Spinner } from './components/ui'
 import { I18nProvider, useI18n } from './i18n'
 import { useAutoLock } from './state/autolock'
@@ -16,7 +16,7 @@ type Phase =
   | { name: 'loading' }
   | { name: 'offline' }
   | { name: 'login'; notice?: string }
-  | { name: 'register' }
+  | { name: 'register'; invite?: Invite }
   | { name: 'recover' }
   | { name: 'unlock'; account: Account }
   | { name: 'vault'; session: Unlocked }
@@ -46,6 +46,9 @@ function Root({ prefs, onPrefs }: { prefs: Prefs; onPrefs: (p: Prefs) => void })
   const { t } = useI18n()
   const [phase, setPhase] = useState<Phase>({ name: 'loading' })
   const [config, setConfig] = useState<ServerConfig | null>(null)
+  // start corre una sola vez; con la referencia no se reinicia la app al cambiar de idioma
+  const tRef = useRef(t)
+  tRef.current = t
 
   const start = useCallback(async () => {
     setPhase({ name: 'loading' })
@@ -53,6 +56,20 @@ function Root({ prefs, onPrefs }: { prefs: Prefs; onPrefs: (p: Prefs) => void })
       setConfig(await api.config())
     } catch {
       setPhase({ name: 'offline' })
+      return
+    }
+    // Enlace de invitación: ?invite=<token>. Se quita de la barra para que no quede en el historial.
+    const token = new URLSearchParams(location.search).get('invite')
+    if (token) {
+      history.replaceState(null, '', location.pathname)
+      try {
+        const { email } = await api.invite(token)
+        // Con una sesión abierta en este navegador primero hay que salir de ella
+        await api.logout().catch(() => {})
+        setPhase({ name: 'register', invite: { token, email } })
+      } catch {
+        setPhase({ name: 'login', notice: tRef.current('register.inviteInvalid') })
+      }
       return
     }
     try {
@@ -114,7 +131,14 @@ function Root({ prefs, onPrefs }: { prefs: Prefs; onPrefs: (p: Prefs) => void })
         />
       )
     case 'register':
-      return <Register config={config!} onUnlocked={onUnlocked} onCancel={() => setPhase({ name: 'login' })} />
+      return (
+        <Register
+          config={config!}
+          invite={phase.invite}
+          onUnlocked={onUnlocked}
+          onCancel={() => setPhase({ name: 'login' })}
+        />
+      )
     case 'recover':
       return (
         <Recover

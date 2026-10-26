@@ -39,7 +39,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 export interface ServerConfig {
   version: string
-  registration: 'first' | 'open' | 'closed'
+  registration: 'first' | 'open' | 'invite'
 }
 
 export interface Account {
@@ -63,6 +63,19 @@ export interface EncryptedVault {
   updatedAt: string
 }
 
+export interface Invite {
+  token: string
+  email: string
+}
+
+export interface AdminOverview {
+  registration: 'open' | 'invite'
+  // Si el servidor tiene SMTP para mandar las invitaciones por correo
+  mail: boolean
+  users: { id: string; email: string; isAdmin: boolean; totpEnabled: boolean; createdAt: string }[]
+  invitations: { id: string; email: string; createdAt: string; expiresAt: string }[]
+}
+
 export interface NewPassword {
   kdf: KdfParams
   authKey: string
@@ -73,7 +86,9 @@ export const api = {
   config: () => request<ServerConfig>('GET', '/config'),
 
   prelogin: (email: string) => request<{ kdf: KdfParams }>('POST', '/auth/prelogin', { email }),
-  register: (payload: RegisterPayload) => request<{ ok: true }>('POST', '/auth/register', payload),
+  register: (payload: RegisterPayload, invite?: string) =>
+    request<{ ok: true }>('POST', '/auth/register', { ...payload, invite }),
+  invite: (token: string) => request<{ email: string }>('GET', `/invite/${encodeURIComponent(token)}`),
   login: (email: string, authKey: string) =>
     request<{ mfaRequired: boolean }>('POST', '/auth/login', { email, authKey }),
   loginMfa: (code: string) => request<{ ok: true }>('POST', '/auth/login/mfa', { code }),
@@ -96,6 +111,13 @@ export const api = {
   disableQuickUnlock: (id: string) => request<{ ok: true }>('DELETE', `/account/quick-unlock/${id}`),
   openQuickUnlock: (id: string, verifier: string) =>
     request<{ share: string }>('POST', `/account/quick-unlock/${id}/open`, { verifier }),
+
+  admin: () => request<AdminOverview>('GET', '/admin'),
+  setRegistration: (mode: AdminOverview['registration']) =>
+    request<{ registration: AdminOverview['registration'] }>('PUT', '/admin/registration', { mode }),
+  createInvite: (email: string, lang: 'es' | 'en') =>
+    request<{ id: string; link: string; emailed: boolean; mail: boolean }>('POST', '/admin/invitations', { email, lang }),
+  revokeInvite: (id: string) => request<{ ok: true }>('DELETE', `/admin/invitations/${id}`),
 
   vaults: () => request<EncryptedVault[]>('GET', '/vaults'),
   createVault: (id: string, data: string, protectedVaultKey: string) =>

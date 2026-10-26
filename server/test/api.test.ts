@@ -20,6 +20,7 @@ import {
 import { buildApp } from '../src/app'
 import type { Config } from '../src/config'
 import { connect, migrate, type Sql } from '../src/db'
+import type { Mail } from '../src/mail'
 import { ServerKeys } from '../src/security'
 
 const DB = process.env.TEST_DATABASE_URL
@@ -37,19 +38,26 @@ function config(overrides: Partial<Config> = {}): Config {
     trustProxy: 1,
     sessionTtlDays: 14,
     authRateLimit: 1000,
+    smtp: null,
+    publicUrl: null,
     ...overrides
   }
 }
 
+// Buzón falso: guarda los correos en vez de mandarlos
+const outbox: Mail[] = []
+const mailer = { send: async (mail: Mail) => void outbox.push(mail) }
+
 class Client {
   cookie = ''
+  headers: Record<string, string> = {}
   constructor(private app: App) {}
 
   async call(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, body?: unknown, csrf = true) {
     const res = await this.app.inject({
       method,
       url: `/api${url}`,
-      headers: { ...(csrf ? { 'x-passme-request': '1' } : {}), ...(this.cookie ? { cookie: this.cookie } : {}) },
+      headers: { ...this.headers, ...(csrf ? { 'x-passme-request': '1' } : {}), ...(this.cookie ? { cookie: this.cookie } : {}) },
       ...(body === undefined ? {} : { payload: body as object })
     })
     const setCookie = res.headers['set-cookie']
@@ -69,7 +77,7 @@ describe.skipIf(!DB)('API de punta a punta', () => {
     sql = connect(DB!)
     await sql.unsafe('DROP SCHEMA public CASCADE; CREATE SCHEMA public;')
     await migrate(sql, () => {})
-    app = await buildApp({ config: config(), sql, keys: new ServerKeys(SECRET), version: 'test' }, false)
+    app = await buildApp({ config: config(), sql, keys: new ServerKeys(SECRET), mailer, version: 'test' }, false)
   })
 
   afterAll(async () => {
@@ -415,13 +423,72 @@ describe.skipIf(!DB)('API de punta a punta', () => {
     )
   })
 
+  it('invitaciones: el administrador invita por correo y el enlace sirve una vez', async () => {
+    // Un administrador propio para esta prueba (Ana ya tiene 2FA de las anteriores)
+    const admin = new Client(app)
+    admin.headers.origin = 'https://passme.example'
+    await admin.call('POST', '/auth/register', (await createAccount('iris@example.com', password, newRecoveryPhrase(), 'Personal')).payload)
+    await sql`UPDATE users SET is_admin = true WHERE email = 'iris@example.com'`
+
+    // Un usuario normal no entra al panel
+    const beto = new Client(app)
+    await beto.call('POST', '/auth/register', (await createAccount('jose@example.com', password, newRecoveryPhrase(), 'Personal')).payload)
+    expect((await beto.call('GET', '/admin')).status).toBe(403)
+    expect((await beto.call('POST', '/admin/invitations', { email: 'x@example.com' })).status).toBe(403)
+
+    // Solo por invitación: registrarse sin enlace se rechaza
+    expect((await admin.call('PUT', '/admin/registration', { mode: 'invite' })).status).toBe(200)
+    expect((await new Client(app).call('GET', '/config')).body.registration).toBe('invite')
+    const gaby = await createAccount('gaby@example.com', password, newRecoveryPhrase(), 'Personal')
+    expect((await new Client(app).call('POST', '/auth/register', gaby.payload)).body.error).toBe('registration_closed')
+
+    // Invitar manda el correo con el enlace
+    const sent = await admin.call('POST', '/admin/invitations', { email: 'Gaby@Example.com', lang: 'es' })
+    expect(sent.body.emailed).toBe(true)
+    const token = new URL(sent.body.link).searchParams.get('invite')!
+    expect(sent.body.link).toBe(`https://passme.example/?invite=${token}`)
+    const mail = outbox.at(-1)!
+    expect(mail.to).toBe('gaby@example.com')
+    expect(mail.text).toContain(sent.body.link)
+    expect(mail.html).toContain('iris@example.com')
+    // La base solo guarda el hash del token
+    const [row] = await sql`SELECT token_hash FROM invitations WHERE email = 'gaby@example.com'`
+    expect(Buffer.from(row!.token_hash).toString('base64url')).not.toBe(token)
+
+    const visitor = new Client(app)
+    expect((await visitor.call('GET', `/invite/${token}`)).body.email).toBe('gaby@example.com')
+    // La invitación es para ese correo
+    const other = await createAccount('otro@example.com', password, newRecoveryPhrase(), 'Personal')
+    expect((await visitor.call('POST', '/auth/register', { ...other.payload, invite: token })).body.error).toBe('invite_email')
+    expect((await visitor.call('POST', '/auth/register', { ...gaby.payload, invite: token })).status).toBe(200)
+    // Ya usada no sirve otra vez
+    expect((await new Client(app).call('GET', `/invite/${token}`)).status).toBe(404)
+    expect((await new Client(app).call('POST', '/auth/register', { ...other.payload, invite: token })).body.error).toBe('invite_invalid')
+
+    // No se invita a quien ya tiene cuenta, y una invitación revocada deja de servir
+    expect((await admin.call('POST', '/admin/invitations', { email: 'gaby@example.com' })).body.error).toBe('email_taken')
+    const hugo = await admin.call('POST', '/admin/invitations', { email: 'hugo@example.com', lang: 'en' })
+    expect(outbox.at(-1)!.subject).toBe("You're invited to PassMe")
+    const overview = (await admin.call('GET', '/admin')).body
+    expect(overview.invitations.map((i: { email: string }) => i.email)).toEqual(['hugo@example.com'])
+    expect(overview.users.find((u: { email: string }) => u.email === 'gaby@example.com').isAdmin).toBe(false)
+    await admin.call('DELETE', `/admin/invitations/${hugo.body.id}`)
+    const hugoToken = new URL(hugo.body.link).searchParams.get('invite')!
+    expect((await new Client(app).call('GET', `/invite/${hugoToken}`)).status).toBe(404)
+
+    // Con el registro abierto cualquiera puede crear su cuenta
+    await admin.call('PUT', '/admin/registration', { mode: 'open' })
+    expect((await new Client(app).call('POST', '/auth/register', other.payload)).status).toBe(200)
+    await sql`DELETE FROM settings`
+  })
+
   it('con el registro cerrado no acepta cuentas nuevas', async () => {
     const closed = await buildApp(
-      { config: config({ registration: 'closed' }), sql, keys: new ServerKeys(SECRET), version: 'test' },
+      { config: config({ registration: 'invite' }), sql, keys: new ServerKeys(SECRET), mailer, version: 'test' },
       false
     )
     const c = new Client(closed)
-    expect((await c.call('GET', '/config')).body.registration).toBe('closed')
+    expect((await c.call('GET', '/config')).body.registration).toBe('invite')
     const { payload } = await createAccount('carla@example.com', password, newRecoveryPhrase(), 'Personal')
     expect((await c.call('POST', '/auth/register', payload)).body.error).toBe('registration_closed')
     await closed.close()
@@ -429,7 +496,7 @@ describe.skipIf(!DB)('API de punta a punta', () => {
 
   it('aplica el límite de intentos por IP', async () => {
     const limited = await buildApp(
-      { config: config({ authRateLimit: 3 }), sql, keys: new ServerKeys(SECRET), version: 'test' },
+      { config: config({ authRateLimit: 3 }), sql, keys: new ServerKeys(SECRET), mailer, version: 'test' },
       false
     )
     const c = new Client(limited)
