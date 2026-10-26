@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { ApiError } from '../api/client'
 import { DecryptError } from '../crypto/aes'
+import { ImportError } from '../transfer/importers'
 import type { Lang } from '../state/prefs'
 import { en } from './en'
 import { es, type Messages } from './es'
@@ -35,6 +36,7 @@ export function useI18n(): I18n {
 // Convierte cualquier error en un mensaje para la persona, sin detalles técnicos
 export function errorMessage(t: Translate, err: unknown): string {
   if (err instanceof DecryptError) return t('error.wrong_password')
+  if (err instanceof ImportError) return t(`import.error.${err.code}`)
   if (err instanceof ApiError) {
     const key = `error.${err.code}` as MessageKey
     return key in es ? t(key) : t('error.server_error')

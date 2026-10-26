@@ -16,12 +16,14 @@ contraseña maestra.
 - Campos personalizados, favoritos y papelera en cualquier elemento
 - Varias bóvedas por cuenta, cada una con su nombre, ícono, color y llave propia
 - Generador de contraseñas y de frases
+- Importar desde Proton Pass, Passbolt, Bitwarden, 1Password, LastPass, KeePass(XC), Dashlane,
+  NordPass y navegadores; exportar a PassMe, Bitwarden (JSON o CSV) y CSV de navegador
 - Bloqueo automático configurable (5 min por defecto) y portapapeles que se vacía a los 30 s
 - Varios usuarios por servidor, con registro abierto o cerrado
 - Interfaz en español e inglés, instalable en el teléfono
 
-Próximas versiones: códigos TOTP por elemento, importar desde Proton
-Pass, monitor de seguridad, bóvedas compartidas y passkeys.
+Próximas versiones: códigos TOTP por elemento, monitor de seguridad, bóvedas compartidas y
+passkeys.
 
 ## Seguridad en breve
 

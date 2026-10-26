@@ -476,7 +476,12 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
           <Generator />
         ) : (
           <Settings
-            account={session.account}
+            session={session}
+            items={items ?? []}
+            onImported={(newVaults, newItems) => {
+              if (newVaults.length) setVaults([...vaults, ...newVaults])
+              setItems((prev) => [...newItems, ...(prev ?? [])])
+            }}
             prefs={prefs}
             onPrefs={onPrefs}
             onAccountChanged={async () => onSession({ ...session, account: await api.account() })}

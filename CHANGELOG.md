@@ -1,5 +1,18 @@
 # Cambios
 
+## v0.1.7
+
+- Importar desde Proton Pass (.zip o .json), Bitwarden (.json), y CSV de Passbolt, Bitwarden,
+  LastPass, 1Password, KeePass(XC), Dashlane, NordPass, Chrome, Edge, Firefox y Safari: el formato
+  se reconoce solo
+- Al importar se respetan las carpetas (cada una va a una bóveda con su nombre, que se crea si no
+  existe) o todo va a una sola bóveda; los que ya tienes se omiten
+- Exportar a PassMe (copia completa), Bitwarden JSON (para Proton Pass, Bitwarden, 1Password…), CSV
+  de Bitwarden (para Passbolt, KeePassXC…) y CSV de navegador; pide la contraseña maestra
+- Los inicios de sesión tienen un campo nuevo para la clave TOTP (2FA), que también se importa y
+  exporta
+- Servidor: POST /items/batch guarda hasta 100 elementos cifrados en una sola transacción
+
 ## v0.1.6
 
 - El PIN o patrón ya no se pierde al cerrar sesión: queda ligado al dispositivo. Para iniciar sesión

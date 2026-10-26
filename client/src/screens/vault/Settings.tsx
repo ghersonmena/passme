@@ -10,6 +10,9 @@ import { LOCK_OPTIONS, type Lang, type Prefs, type Theme } from '../../state/pre
 import { masterPasswordProblem, MIN_MASTER_LENGTH } from '../Register'
 import { QuickUnlockSettings } from './QuickUnlockSettings'
 import { loadQuickRecord } from '../../crypto/quickUnlock'
+import type { Item } from '../../crypto/items'
+import type { OpenVault, Unlocked } from '../../state/session'
+import { TransferSettings } from './Transfer'
 
 const SOURCE_URL = 'https://github.com/ghersonmena/passme'
 
@@ -20,15 +23,18 @@ const THEMES: { value: Theme; icon: typeof Sun }[] = [
 ]
 
 interface Props {
-  account: Account
+  session: Unlocked
+  items: Item[]
+  onImported: (vaults: OpenVault[], items: Item[]) => void
   prefs: Prefs
   onPrefs: (prefs: Prefs) => void
   onAccountChanged: () => Promise<void>
   onLogout: () => void
 }
 
-export function Settings({ account, prefs, onPrefs, onAccountChanged, onLogout }: Props) {
+export function Settings({ session, items, onImported, prefs, onPrefs, onAccountChanged, onLogout }: Props) {
   const { t } = useI18n()
+  const { account } = session
   return (
     <section className="page settings">
       <h2>{t('settings.title')}</h2>
@@ -75,6 +81,7 @@ export function Settings({ account, prefs, onPrefs, onAccountChanged, onLogout }
         <p className="hint">{t('settings.autoLockHelp')}</p>
       </div>
 
+      <TransferSettings session={session} items={items} onImported={onImported} />
       <QuickUnlockSettings account={account} />
       <TwoFactor account={account} onChanged={onAccountChanged} />
       <ChangePassword account={account} onChanged={onAccountChanged} />

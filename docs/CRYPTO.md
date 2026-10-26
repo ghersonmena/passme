@@ -29,6 +29,9 @@ llave de usuario (aleatoria, 256 bits)
   bóveda, el navegador lo vuelve a cifrar con la llave de la bóveda destino.
 - **Llaves en memoria:** se importan como `CryptoKey` no exportables. Los búferes intermedios se
   sobrescriben con ceros en cuanto dejan de usarse. Al bloquear se sueltan todas las referencias.
+- **Importar y exportar:** el archivo se lee y se arma en el navegador; al servidor solo llegan los
+  elementos ya cifrados, en lotes de hasta 100. Exportar descifra todo en un archivo sin cifrar,
+  así que pide la contraseña maestra aunque la bóveda esté abierta.
 - **Contraseñas:** se normalizan con NFKC para que la misma contraseña escrita desde otro sistema o
   teclado produzca los mismos bytes.
 

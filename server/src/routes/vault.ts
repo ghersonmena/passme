@@ -12,6 +12,7 @@ const vaultData = blob(4000)
 const WRITE_ROLES = ['owner', 'manager', 'editor']
 const MANAGE_ROLES = ['owner', 'manager']
 const MAX_VAULTS = 50
+const MAX_BATCH = 100
 
 interface ItemRow {
   id: string
@@ -149,6 +150,29 @@ export async function vaultRoutes(app: FastifyInstance, ctx: Context): Promise<v
     if (!row) throw new HttpError(409, 'conflict')
     return toItem(row)
   })
+
+  // Importación: varios elementos nuevos de una misma bóveda en una sola petición. Todo o nada,
+  // para que un lote a medias no deje duplicados al reintentar.
+  app.post(
+    '/items/batch',
+    { bodyLimit: (MAX_BATCH + 1) * 100_000 },
+    async (req) => {
+      const body = parse(
+        z.object({ vaultId: uuid, items: z.array(z.object({ id: uuid, data: itemData })).min(1).max(MAX_BATCH) }),
+        req.body
+      )
+      const role = await memberRole(req.session!.userId, body.vaultId)
+      if (!role || !WRITE_ROLES.includes(role)) throw new HttpError(404, 'not_found')
+      const rows = await sql.begin(async (tx) => {
+        const inserted = await tx<ItemRow[]>`
+          INSERT INTO items ${tx(body.items.map((i) => ({ id: i.id, vault_id: body.vaultId, data: i.data })))}
+          ON CONFLICT (id) DO NOTHING RETURNING *`
+        if (inserted.length !== body.items.length) throw new HttpError(409, 'conflict')
+        return inserted
+      })
+      return rows.map(toItem)
+    }
+  )
 
   // Control de concurrencia optimista: si otro dispositivo guardó antes, se responde 409 y el
   // cliente recarga en vez de pisar el cambio

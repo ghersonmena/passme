@@ -105,6 +105,8 @@ export const api = {
   items: () => request<EncryptedItem[]>('GET', '/items'),
   createItem: (id: string, vaultId: string, data: string) =>
     request<EncryptedItem>('POST', '/items', { id, vaultId, data }),
+  createItems: (vaultId: string, items: { id: string; data: string }[]) =>
+    request<EncryptedItem[]>('POST', '/items/batch', { vaultId, items }),
   updateItem: (id: string, data: string, revision: number) =>
     request<EncryptedItem>('PUT', `/items/${id}`, { data, revision }),
   moveItem: (id: string, vaultId: string, data: string, revision: number) =>

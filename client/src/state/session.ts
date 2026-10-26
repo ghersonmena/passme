@@ -69,6 +69,31 @@ export async function createItem(session: Unlocked, vaultId: string, data: ItemD
   return decrypted(session, await api.createItem(id, vaultId, sealed))
 }
 
+// Máximo que acepta el servidor por petición
+const BATCH = 100
+
+// Para importar: cifra y guarda en lotes, avisando del avance tras cada lote
+export async function createItems(
+  session: Unlocked,
+  vaultId: string,
+  datas: ItemData[],
+  onProgress: (saved: number) => void
+): Promise<Item[]> {
+  const key = vaultKey(session, vaultId)
+  const saved: Item[] = []
+  for (let start = 0; start < datas.length; start += BATCH) {
+    const batch = await Promise.all(
+      datas.slice(start, start + BATCH).map(async (data) => {
+        const id = crypto.randomUUID()
+        return { id, data: await encryptItem(key, vaultId, id, data) }
+      })
+    )
+    for (const enc of await api.createItems(vaultId, batch)) saved.push(await decryptItem(key, enc))
+    onProgress(saved.length)
+  }
+  return saved
+}
+
 export async function updateItem(session: Unlocked, item: Item, data: ItemData): Promise<Item> {
   const sealed = await encryptItem(vaultKey(session, item.vaultId), item.vaultId, item.id, data)
   return decrypted(session, await api.updateItem(item.id, sealed, item.revision))

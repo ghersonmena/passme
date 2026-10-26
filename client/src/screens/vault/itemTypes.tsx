@@ -82,7 +82,7 @@ export const TYPES: TypeDef[] = [
     icon: KeyRound,
     quick: 'password',
     urls: true,
-    fields: [f('username', 'text', { label: 'loginUsername' }), f('password', 'password')],
+    fields: [f('username', 'text', { label: 'loginUsername' }), f('password', 'password'), f('totp', 'secret', { mono: true })],
     subtitle: (d) => first(d.fields.username, d.urls[0])
   },
   {

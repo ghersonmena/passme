@@ -1605,3 +1605,75 @@ fieldset.picker {
 .pattern-line.live {
   opacity: 0.5;
 }
+
+/* --- Importar y exportar --- */
+
+fieldset.tight {
+  border: none;
+  padding: 0;
+  margin: 0;
+  gap: 0.6rem;
+}
+
+fieldset.tight legend {
+  margin-bottom: 0.6rem;
+}
+
+.file-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem 1rem;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.file-drop:hover,
+.file-drop:focus-within {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.file-drop input {
+  max-width: 100%;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.import-how summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--accent);
+}
+
+.import-how ul {
+  margin: 0.6rem 0 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.type-counts {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.type-counts li {
+  font-size: 0.85rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+}

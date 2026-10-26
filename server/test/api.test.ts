@@ -234,6 +234,36 @@ describe.skipIf(!DB)('API de punta a punta', () => {
     expect(((await c.call('GET', '/vaults')).body as unknown as unknown[]).length).toBe(1)
   })
 
+  it('importa elementos por lotes, todo o nada', async () => {
+    const c = new Client(app)
+    const { payload, encKey } = await createAccount('fer@example.com', password, newRecoveryPhrase(), 'Personal')
+    await c.call('POST', '/auth/register', payload)
+    const account = (await c.call('GET', '/account')).body
+    const userKey = await unlockUserKey(encKey, account.protectedUserKey)
+    const vault = payload.vault.id
+    const key = await unlockVaultKey(userKey, vault, payload.vault.protectedVaultKey)
+
+    const batch = await Promise.all(
+      Array.from({ length: 100 }, async (_, n) => {
+        const id = crypto.randomUUID()
+        const data = { ...emptyItem('login'), name: `Sitio ${n}`, fields: { username: 'dani', password: `clave-${n}` } }
+        return { id, data: await encryptItem(key, vault, id, data) }
+      })
+    )
+    const res = await c.call('POST', '/items/batch', { vaultId: vault, items: batch })
+    expect(res.status).toBe(200)
+    expect((res.body as unknown as unknown[]).length).toBe(100)
+
+    // Más de 100 se rechaza, y un lote con un id repetido no guarda nada
+    const extra = { id: crypto.randomUUID(), data: batch[0]!.data }
+    expect((await c.call('POST', '/items/batch', { vaultId: vault, items: [...batch, extra] })).status).toBe(400)
+    expect((await c.call('POST', '/items/batch', { vaultId: vault, items: [extra, batch[0]] })).status).toBe(409)
+    expect(((await c.call('GET', '/items')).body as unknown as unknown[]).length).toBe(100)
+
+    // Ni en la bóveda de otro usuario
+    expect((await c.call('POST', '/items/batch', { vaultId, items: [extra] })).status).toBe(404)
+  })
+
   it('desbloqueo rápido: pide la contraseña, limita los intentos y sobrevive al cerrar sesión', async () => {
     const c = new Client(app)
     const { payload } = await createAccount('dani@example.com', password, newRecoveryPhrase(), 'Personal')
