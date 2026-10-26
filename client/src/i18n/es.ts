@@ -471,7 +471,25 @@ export const es = {
   'swipe.trash': 'Papelera',
   'swipe.favorite': 'Favorito',
   'swipe.unfavorite': 'Quitar favorito',
-  'swipe.trashed': '«{name}» se movió a la papelera'
+  'swipe.trashed': '«{name}» se movió a la papelera',
+  'map.open': 'Mapa',
+  'map.show': 'Ver en el mapa',
+  'map.pickTitle': 'Elegir en el mapa',
+  'map.viewTitle': 'Ubicación',
+  'map.search': 'Buscar',
+  'map.searchPlaceholder': 'Dirección, lugar, coordenadas o enlace de Google Maps',
+  'map.myLocation': 'Mi ubicación actual',
+  'map.noResults': 'Sin resultados.',
+  'map.searchError': 'No se pudo buscar. Revisa tu conexión.',
+  'map.noLocation': 'No se pudo obtener tu ubicación. Revisa el permiso del navegador.',
+  'map.pickHelp': 'Toca el mapa o arrastra el marcador. El mapa y la búsqueda usan OpenStreetMap: ellos ven la zona que buscas, no el resto de tus datos.',
+  'map.privacy': 'El mapa se carga de OpenStreetMap: ellos ven la zona que miras, no el resto de tus datos.',
+  'map.noPoint': 'Sin punto elegido',
+  'map.use': 'Usar este punto',
+  'map.coordsPlaceholder': '19.432608, -99.133209',
+  'map.coordsHelp': 'Elige el punto en el mapa, o pega coordenadas o un enlace de Google Maps, Apple Maps u OpenStreetMap.',
+  'map.shortLink': 'Los enlaces cortos (maps.app.goo.gl) no traen coordenadas: ábrelo y copia el enlace completo de la barra de direcciones.',
+  'map.invalid': 'No reconozco estas coordenadas.'
 }
 
 export type Messages = Record<keyof typeof es, string>

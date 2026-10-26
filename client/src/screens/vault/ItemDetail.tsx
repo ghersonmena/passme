@@ -1,6 +1,6 @@
 import { ArrowLeft, ExternalLink, Eye, EyeOff, Map as MapIcon, Pencil, QrCode, RotateCcw, Star, Trash2 } from 'lucide-react'
 import QRCode from 'qrcode'
-import { useEffect, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { CopyButton, PasswordStrength } from '../../components/ui'
 import type { Item } from '../../crypto/items'
 import { useI18n } from '../../i18n'
@@ -11,7 +11,6 @@ import {
   fieldLabel,
   formatCardNumber,
   lastDigits,
-  mapUrl,
   optionLabel,
   SECRET_KINDS,
   TYPE_BY_ID,
@@ -19,6 +18,7 @@ import {
   wifiQrText,
   type FieldDef
 } from './itemTypes'
+import { mapLinks, parseLocation } from './geo'
 import { safeUrl } from './url'
 import { VaultIcon } from './vaultLooks'
 
@@ -79,6 +79,9 @@ function FieldView({ label, value, secret, mono, multiline, display, masked, rev
   )
 }
 
+// Leaflet pesa: se descarga solo al abrir un mapa
+const LocationMap = lazy(() => import('./LocationMap'))
+
 function LinkButton({ href, label, icon }: { href: string; label: string; icon: ReactNode }) {
   return (
     <a className="icon-btn" href={href} target="_blank" rel="noopener noreferrer" aria-label={label} title={label}>
@@ -91,6 +94,7 @@ export function ItemDetail({ item, vault, readOnly, onBack, onEdit, onToggleFavo
   const { t, lang } = useI18n()
   const [revealed, setRevealed] = useState<Set<string>>(new Set())
   const [wifiQr, setWifiQr] = useState<string | null>(null)
+  const [showMap, setShowMap] = useState(false)
   const { data } = item
   const def = TYPE_BY_ID[data.type]
   const Icon = def.icon
@@ -148,8 +152,17 @@ export function ItemDetail({ item, vault, readOnly, onBack, onEdit, onToggleFavo
       if (href) actions = <LinkButton href={href} label={t('item.openSite')} icon={<ExternalLink size={18} />} />
     }
     if (fd.key === 'coordinates') {
-      const href = mapUrl(value)
-      if (href) actions = <LinkButton href={href} label={t('item.openMap')} icon={<MapIcon size={18} />} />
+      const point = parseLocation(value)
+      if (point) {
+        actions = (
+          <>
+            <button type="button" className="icon-btn" onClick={() => setShowMap(true)} aria-label={t('map.show')} title={t('map.show')}>
+              <MapIcon size={18} />
+            </button>
+            <LinkButton href={mapLinks(point).google} label={t('item.openMap')} icon={<ExternalLink size={18} />} />
+          </>
+        )
+      }
     }
     if (fd.kind === 'password' && revealed.has(fd.key)) below = <PasswordStrength password={value} />
 
@@ -259,6 +272,12 @@ export function ItemDetail({ item, vault, readOnly, onBack, onEdit, onToggleFavo
             </>
           )}
         </div>
+      )}
+
+      {showMap && (
+        <Suspense fallback={null}>
+          <LocationMap value={data.fields.coordinates ?? ''} onClose={() => setShowMap(false)} />
+        </Suspense>
       )}
 
       {data.note && (

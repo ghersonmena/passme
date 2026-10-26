@@ -1773,3 +1773,99 @@ fieldset.tight legend {
   border-radius: 999px;
   background: var(--surface-2);
 }
+
+/* --- Mapa de ubicaciones --- */
+
+.map-search {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.map-search input {
+  flex: 1;
+  min-width: 0;
+}
+
+.map-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.map-results li + li {
+  border-top: 1px solid var(--border);
+}
+
+.map-results li.muted {
+  padding: 0.6rem 0.75rem;
+}
+
+.map-results button {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.map-results button:hover {
+  background: var(--surface-2);
+}
+
+.map-box {
+  height: min(380px, 50vh);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  /* Leaflet usa z-index altos; dentro del diálogo no deben tapar nada */
+  isolation: isolate;
+}
+
+.map-box .leaflet-control-attribution {
+  font-size: 0.65rem;
+}
+
+.map-pin svg {
+  display: block;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.35));
+}
+
+.map-pin path {
+  fill: var(--accent);
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.map-pin circle {
+  fill: #fff;
+}
+
+.map-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.map-links {
+  display: inline-flex;
+  gap: 0.75rem;
+}
+
+.map-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.modal:has(.map-dialog) {
+  width: min(640px, calc(100% - 2rem));
+}

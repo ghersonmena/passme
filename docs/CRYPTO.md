@@ -32,6 +32,9 @@ llave de usuario (aleatoria, 256 bits)
 - **Importar y exportar:** el archivo se lee y se arma en el navegador; al servidor solo llegan los
   elementos ya cifrados, en lotes de hasta 100. Exportar descifra todo en un archivo sin cifrar,
   así que pide la contraseña maestra aunque la bóveda esté abierta.
+- **Mapa de ubicaciones:** se carga solo al abrirlo, desde OpenStreetMap (imágenes del mapa y
+  búsqueda de lugares). OpenStreetMap ve la zona que se mira o el texto que se busca, nunca el
+  resto del elemento. Las coordenadas se guardan cifradas como cualquier otro campo.
 - **Contraseñas:** se normalizan con NFKC para que la misma contraseña escrita desde otro sistema o
   teclado produzca los mismos bytes.
 

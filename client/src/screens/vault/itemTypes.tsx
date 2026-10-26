@@ -25,6 +25,7 @@ import { es } from '../../i18n/es'
 //   password   secreto con generador        multiline  varias líneas
 //   secretText secreto de varias líneas     date       fecha (AAAA-MM-DD)
 //   expiry     vencimiento MM/AA            select     lista fija de opciones
+//   coordinates  latitud y longitud, con mapa para elegirlas
 export type FieldKind =
   | 'text'
   | 'email'
@@ -38,6 +39,7 @@ export type FieldKind =
   | 'date'
   | 'expiry'
   | 'select'
+  | 'coordinates'
 
 export interface FieldDef {
   key: string
@@ -198,7 +200,7 @@ export const TYPES: TypeDef[] = [
     type: 'location',
     icon: MapPin,
     quick: 'accessCode',
-    fields: [f('address', 'multiline'), f('coordinates', 'text', { mono: true }), f('accessCode', 'secret', { mono: true })],
+    fields: [f('address', 'multiline'), f('coordinates', 'coordinates', { mono: true }), f('accessCode', 'secret', { mono: true })],
     subtitle: (d) => first(d.fields.address?.split('\n')[0], d.fields.coordinates)
   },
   {
@@ -332,15 +334,4 @@ export function wifiQrText(d: ItemData): string {
   const kind = security === 'open' ? 'nopass' : security === 'wep' ? 'WEP' : 'WPA'
   const pass = kind === 'nopass' ? '' : `P:${esc(d.fields.password ?? '')};`
   return `WIFI:T:${kind};S:${esc(d.fields.ssid ?? '')};${pass};`
-}
-
-// --- Ubicaciones: "lat, lon" a un enlace de OpenStreetMap ---
-
-export function mapUrl(coordinates: string): string | null {
-  const m = /^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/.exec(coordinates)
-  if (!m) return null
-  const lat = Number(m[1])
-  const lon = Number(m[2])
-  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null
-  return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`
 }

@@ -1,5 +1,15 @@
 # Cambios
 
+## v0.1.9
+
+- Ubicaciones secretas con mapa (OpenStreetMap): toca el mapa, arrastra el marcador, busca una
+  dirección o usa tu ubicación actual
+- Pega un enlace de Google Maps, Apple Maps u OpenStreetMap, o grados (19°25'57"N…), y se convierte
+  en coordenadas
+- Desde el detalle: ver el punto en el mapa o abrirlo en Google Maps o Apple Maps
+- El mapa se descarga solo al abrirlo; la CSP permite tile.openstreetmap.org y
+  nominatim.openstreetmap.org, y el permiso de ubicación queda habilitado para la app
+
 ## v0.1.8
 
 - Deslizar un elemento de la lista hacia la derecha lo manda a la papelera, con un aviso para

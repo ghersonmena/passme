@@ -1,11 +1,14 @@
-import { ArrowLeft, Eye, EyeOff, Plus, RefreshCw, X } from 'lucide-react'
-import { useId, useState, type FormEvent } from 'react'
+import { ArrowLeft, Eye, EyeOff, MapPin, Plus, RefreshCw, X } from 'lucide-react'
+import { lazy, Suspense, useId, useState, type FormEvent } from 'react'
 import { ErrorText, Field, PasswordField, PasswordStrength, Spinner } from '../../components/ui'
 import { generatePassword } from '../../crypto/generator'
 import type { CustomField, ItemData } from '../../crypto/items'
 import { errorMessage, useI18n } from '../../i18n'
 import type { OpenVault } from '../../state/session'
+import { formatLatLng, isShortMapLink, parseLocation } from './geo'
 import { fieldLabel, optionLabel, TYPE_BY_ID, typeLabel, type FieldDef } from './itemTypes'
+
+const LocationMap = lazy(() => import('./LocationMap'))
 
 export const DEFAULT_GENERATED = {
   length: 20,
@@ -68,6 +71,7 @@ export function ItemEditor({ initial, isNew, vaults, vaultId: initialVault, onSa
   const [vaultId, setVaultId] = useState(initialVault)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [mapFor, setMapFor] = useState<string | null>(null)
   const def = TYPE_BY_ID[data.type]
 
   const set = <K extends keyof ItemData>(key: K, value: ItemData[K]) => setData((d) => ({ ...d, [key]: value }))
@@ -166,6 +170,32 @@ export function ItemEditor({ initial, isNew, vaults, vaultId: initialVault, onSa
             </select>
           </div>
         )
+      case 'coordinates': {
+        const point = parseLocation(value)
+        return (
+          <div className="field" key={fd.key}>
+            <label htmlFor={`f-${fd.key}`}>{label}</label>
+            <div className="input-row">
+              <input
+                id={`f-${fd.key}`}
+                className="mono"
+                value={value}
+                placeholder={t('map.coordsPlaceholder')}
+                onChange={(e) => onChange(e.target.value)}
+                // Un enlace o grados pegados se convierten a "lat, lon"
+                onBlur={() => point && onChange(formatLatLng(point))}
+                {...RAW}
+              />
+              <button type="button" className="btn" onClick={() => setMapFor(fd.key)}>
+                <MapPin size={16} /> {t('map.open')}
+              </button>
+            </div>
+            <div className="hint">
+              {isShortMapLink(value) ? t('map.shortLink') : value && !point ? t('map.invalid') : t('map.coordsHelp')}
+            </div>
+          </div>
+        )
+      }
       case 'date':
         return <Field key={fd.key} label={label} type="date" value={value} onChange={(e) => onChange(e.target.value)} />
       default:
@@ -197,138 +227,154 @@ export function ItemEditor({ initial, isNew, vaults, vaultId: initialVault, onSa
   }
 
   return (
-    <form className="detail editor" onSubmit={submit}>
-      <header className="detail-header">
-        <button type="button" className="icon-btn back-btn" onClick={onCancel} aria-label={t('common.back')}>
-          <ArrowLeft size={20} />
-        </button>
-        <div className="avatar large" aria-hidden>
-          <def.icon size={24} />
-        </div>
-        <h2>{isNew ? t('item.newTitle', { type: t(typeLabel(data.type)) }) : t('item.editTitle')}</h2>
-      </header>
-
-      <div className="stack">
-        {vaults.length > 1 && (
-          <div className="field">
-            <label htmlFor="item-vault">{t('item.vault')}</label>
-            <select id="item-vault" value={vaultId} onChange={(e) => setVaultId(e.target.value)}>
-              {vaults.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.meta.name}
-                </option>
-              ))}
-            </select>
-            {!isNew && vaultId !== initialVault && <div className="hint">{t('item.moveHint')}</div>}
+    <>
+      <form className="detail editor" onSubmit={submit}>
+        <header className="detail-header">
+          <button type="button" className="icon-btn back-btn" onClick={onCancel} aria-label={t('common.back')}>
+            <ArrowLeft size={20} />
+          </button>
+          <div className="avatar large" aria-hidden>
+            <def.icon size={24} />
           </div>
-        )}
+          <h2>{isNew ? t('item.newTitle', { type: t(typeLabel(data.type)) }) : t('item.editTitle')}</h2>
+        </header>
 
-        <Field
-          label={t('field.name')}
-          value={data.name}
-          onChange={(e) => set('name', e.target.value)}
-          autoFocus={isNew}
-          required
-          maxLength={200}
-        />
+        <div className="stack">
+          {vaults.length > 1 && (
+            <div className="field">
+              <label htmlFor="item-vault">{t('item.vault')}</label>
+              <select id="item-vault" value={vaultId} onChange={(e) => setVaultId(e.target.value)}>
+                {vaults.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.meta.name}
+                  </option>
+                ))}
+              </select>
+              {!isNew && vaultId !== initialVault && <div className="hint">{t('item.moveHint')}</div>}
+            </div>
+          )}
 
-        {def.fields.map(input)}
+          <Field
+            label={t('field.name')}
+            value={data.name}
+            onChange={(e) => set('name', e.target.value)}
+            autoFocus={isNew}
+            required
+            maxLength={200}
+          />
 
-        {def.urls && (
-          <fieldset className="urls">
-            <legend>{t('field.websites')}</legend>
-            {data.urls.map((url, i) => (
-              <div className="input-row" key={i}>
+          {def.fields.map(input)}
+
+          {def.urls && (
+            <fieldset className="urls">
+              <legend>{t('field.websites')}</legend>
+              {data.urls.map((url, i) => (
+                <div className="input-row" key={i}>
+                  <input
+                    type="text"
+                    inputMode="url"
+                    value={url}
+                    placeholder="https://"
+                    onChange={(e) => setUrl(i, e.target.value)}
+                    aria-label={t('field.website')}
+                    {...RAW}
+                  />
+                  {data.urls.length > 1 && (
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => set('urls', data.urls.filter((_, j) => j !== i))}
+                      aria-label={t('common.remove')}
+                    >
+                      <X size={18} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button type="button" className="btn link" onClick={() => set('urls', [...data.urls, ''])}>
+                <Plus size={16} /> {t('item.addUrl')}
+              </button>
+            </fieldset>
+          )}
+
+          <div className="field">
+            <label htmlFor="item-note">{t('field.note')}</label>
+            <textarea
+              id="item-note"
+              rows={data.type === 'note' ? 10 : 4}
+              value={data.note}
+              onChange={(e) => set('note', e.target.value)}
+            />
+          </div>
+
+          <fieldset className="custom-fields">
+            <legend>{t('item.customFields')}</legend>
+            {data.custom.map((c, i) => (
+              <div className="custom-row" key={i}>
                 <input
                   type="text"
-                  inputMode="url"
-                  value={url}
-                  placeholder="https://"
-                  onChange={(e) => setUrl(i, e.target.value)}
-                  aria-label={t('field.website')}
+                  value={c.label}
+                  placeholder={t('item.customLabel')}
+                  aria-label={t('item.customLabel')}
+                  onChange={(e) => setCustom(i, { label: e.target.value })}
+                  maxLength={100}
+                />
+                <input
+                  type={c.secret ? 'password' : 'text'}
+                  value={c.value}
+                  placeholder={t('item.customValue')}
+                  aria-label={t('item.customValue')}
+                  onChange={(e) => setCustom(i, { value: e.target.value })}
                   {...RAW}
                 />
-                {data.urls.length > 1 && (
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={() => set('urls', data.urls.filter((_, j) => j !== i))}
-                    aria-label={t('common.remove')}
-                  >
-                    <X size={18} />
-                  </button>
-                )}
+                <label className="check compact">
+                  <input type="checkbox" checked={c.secret} onChange={(e) => setCustom(i, { secret: e.target.checked })} />
+                  <span>{t('item.customSecret')}</span>
+                </label>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => set('custom', data.custom.filter((_, j) => j !== i))}
+                  aria-label={t('common.remove')}
+                >
+                  <X size={18} />
+                </button>
               </div>
             ))}
-            <button type="button" className="btn link" onClick={() => set('urls', [...data.urls, ''])}>
-              <Plus size={16} /> {t('item.addUrl')}
+            <button
+              type="button"
+              className="btn link"
+              onClick={() => set('custom', [...data.custom, { label: '', value: '', secret: false }])}
+            >
+              <Plus size={16} /> {t('item.addCustomField')}
             </button>
           </fieldset>
-        )}
 
-        <div className="field">
-          <label htmlFor="item-note">{t('field.note')}</label>
-          <textarea
-            id="item-note"
-            rows={data.type === 'note' ? 10 : 4}
-            value={data.note}
-            onChange={(e) => set('note', e.target.value)}
+          <ErrorText>{error}</ErrorText>
+          <div className="row end">
+            <button type="button" className="btn" onClick={onCancel} disabled={busy}>
+              {t('common.cancel')}
+            </button>
+            <button className="btn primary" disabled={busy}>
+              {busy ? <Spinner /> : t('common.save')}
+            </button>
+          </div>
+        </div>
+      </form>
+      {mapFor && (
+        <Suspense fallback={null}>
+          <LocationMap
+            value={data.fields[mapFor] ?? ''}
+            onPick={(point, address) => {
+              setField(mapFor, formatLatLng(point))
+              // La dirección del lugar buscado, solo si no había una
+              if (address && !data.fields.address?.trim()) setField('address', address)
+              setMapFor(null)
+            }}
+            onClose={() => setMapFor(null)}
           />
-        </div>
-
-        <fieldset className="custom-fields">
-          <legend>{t('item.customFields')}</legend>
-          {data.custom.map((c, i) => (
-            <div className="custom-row" key={i}>
-              <input
-                type="text"
-                value={c.label}
-                placeholder={t('item.customLabel')}
-                aria-label={t('item.customLabel')}
-                onChange={(e) => setCustom(i, { label: e.target.value })}
-                maxLength={100}
-              />
-              <input
-                type={c.secret ? 'password' : 'text'}
-                value={c.value}
-                placeholder={t('item.customValue')}
-                aria-label={t('item.customValue')}
-                onChange={(e) => setCustom(i, { value: e.target.value })}
-                {...RAW}
-              />
-              <label className="check compact">
-                <input type="checkbox" checked={c.secret} onChange={(e) => setCustom(i, { secret: e.target.checked })} />
-                <span>{t('item.customSecret')}</span>
-              </label>
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={() => set('custom', data.custom.filter((_, j) => j !== i))}
-                aria-label={t('common.remove')}
-              >
-                <X size={18} />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="btn link"
-            onClick={() => set('custom', [...data.custom, { label: '', value: '', secret: false }])}
-          >
-            <Plus size={16} /> {t('item.addCustomField')}
-          </button>
-        </fieldset>
-
-        <ErrorText>{error}</ErrorText>
-        <div className="row end">
-          <button type="button" className="btn" onClick={onCancel} disabled={busy}>
-            {t('common.cancel')}
-          </button>
-          <button className="btn primary" disabled={busy}>
-            {busy ? <Spinner /> : t('common.save')}
-          </button>
-        </div>
-      </div>
-    </form>
+        </Suspense>
+      )}
+    </>
   )
 }
