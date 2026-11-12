@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError, type Account, type Invite, type ServerConfig } from './api/client'
 import { Spinner } from './components/ui'
+import { WhatsNew } from './components/WhatsNew'
 import { I18nProvider, useI18n } from './i18n'
+import { unseenReleases, type Release } from './releases'
 import { useAutoLock } from './state/autolock'
 import { applyTheme, loadPrefs, savePrefs, type Prefs } from './state/prefs'
 import type { Unlocked } from './state/session'
@@ -19,7 +21,7 @@ type Phase =
   | { name: 'register'; invite?: Invite }
   | { name: 'recover' }
   | { name: 'unlock'; account: Account }
-  | { name: 'vault'; session: Unlocked }
+  | { name: 'vault'; session: Unlocked; news?: Release[] }
 
 export function App() {
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
@@ -84,13 +86,21 @@ function Root({ prefs, onPrefs }: { prefs: Prefs; onPrefs: (p: Prefs) => void })
     void start()
   }, [start])
 
+  // Al entrar se muestran las novedades que este dispositivo no ha visto. Una cuenta recién creada
+  // no tiene nada "nuevo": empieza ya con la versión actual.
   const onUnlocked = useCallback(
-    (session: Unlocked) => {
-      onPrefs({ ...prefs, lastEmail: session.account.email })
-      setPhase({ name: 'vault', session })
+    (session: Unlocked, fresh = false) => {
+      const news = fresh ? [] : unseenReleases(prefs.seenVersion)
+      onPrefs({ ...prefs, lastEmail: session.account.email, seenVersion: news.length ? prefs.seenVersion : __APP_VERSION__ })
+      setPhase({ name: 'vault', session, news: news.length ? news : undefined })
     },
     [prefs, onPrefs]
   )
+
+  const closeNews = useCallback(() => {
+    onPrefs({ ...prefs, seenVersion: __APP_VERSION__ })
+    setPhase((p) => (p.name === 'vault' ? { ...p, news: undefined } : p))
+  }, [prefs, onPrefs])
 
   // Bloquear suelta las llaves y los elementos descifrados; la sesión con el servidor sigue
   const lock = useCallback(() => {
@@ -135,7 +145,7 @@ function Root({ prefs, onPrefs }: { prefs: Prefs; onPrefs: (p: Prefs) => void })
         <Register
           config={config!}
           invite={phase.invite}
-          onUnlocked={onUnlocked}
+          onUnlocked={(session) => onUnlocked(session, true)}
           onCancel={() => setPhase({ name: 'login' })}
         />
       )
@@ -154,14 +164,17 @@ function Root({ prefs, onPrefs }: { prefs: Prefs; onPrefs: (p: Prefs) => void })
       return <Unlock account={phase.account} onUnlocked={onUnlocked} onLogout={logout} />
     case 'vault':
       return (
-        <VaultApp
-          session={phase.session}
-          prefs={prefs}
-          onPrefs={onPrefs}
-          onSession={(session) => setPhase({ name: 'vault', session })}
-          onLock={lock}
-          onLogout={logout}
-        />
+        <>
+          <VaultApp
+            session={phase.session}
+            prefs={prefs}
+            onPrefs={onPrefs}
+            onSession={(session) => setPhase({ name: 'vault', session })}
+            onLock={lock}
+            onLogout={logout}
+          />
+          {phase.news && <WhatsNew releases={phase.news} onClose={closeNews} />}
+        </>
       )
   }
 }

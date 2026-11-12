@@ -1,5 +1,12 @@
 # Cambios
 
+## v0.2.1
+
+- Ventana de novedades: al entrar después de una actualización se muestra lo nuevo de cada versión
+  que ese dispositivo no ha visto (una cuenta recién creada no la ve)
+- Se puede volver a abrir en Ajustes → Acerca de → Novedades
+- Las notas viven en client/src/releases.ts; una prueba exige que la primera sea la versión actual
+
 ## v0.2.0
 
 - Varios usuarios: el administrador elige en Ajustes si el registro es abierto o solo por invitación

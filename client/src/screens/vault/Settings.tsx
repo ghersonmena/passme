@@ -1,6 +1,8 @@
-import { Download, LogOut, Monitor, Moon, ShieldCheck, ShieldOff, Sun } from 'lucide-react'
+import { Download, LogOut, Monitor, Moon, ShieldCheck, ShieldOff, Sparkles, Sun } from 'lucide-react'
 import QRCode from 'qrcode'
 import { useState, type FormEvent } from 'react'
+import { WhatsNew } from '../../components/WhatsNew'
+import { RELEASES } from '../../releases'
 import { api, type Account } from '../../api/client'
 import { CopyButton, ErrorText, Field, PasswordField, PasswordStrength, Spinner } from '../../components/ui'
 import { deriveMasterKeys } from '../../crypto/kdf'
@@ -36,6 +38,7 @@ interface Props {
 export function Settings({ session, items, onImported, prefs, onPrefs, onAccountChanged, onLogout }: Props) {
   const { t } = useI18n()
   const { account } = session
+  const [news, setNews] = useState(false)
   return (
     <section className="page settings">
       <h2>{t('settings.title')}</h2>
@@ -108,6 +111,10 @@ export function Settings({ session, items, onImported, prefs, onPrefs, onAccount
             {t('settings.sourceCode')}
           </a>
         </p>
+        <button className="btn" onClick={() => setNews(true)}>
+          <Sparkles size={16} /> {t('settings.whatsNew')}
+        </button>
+        {news && <WhatsNew releases={RELEASES} onClose={() => setNews(false)} />}
       </div>
     </section>
   )

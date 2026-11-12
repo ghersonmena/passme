@@ -159,6 +159,10 @@ export const en: Messages = {
   'settings.about': 'About',
   'settings.license': 'Free software under the GNU AGPL-3.0 license',
   'settings.sourceCode': 'Source code',
+  'settings.whatsNew': 'What’s new',
+  'whatsNew.title': 'What’s new in PassMe',
+  'whatsNew.older': 'See earlier versions',
+  'whatsNew.ok': 'Got it',
 
   'quickUnlock.title': 'Quick unlock',
   'quickUnlock.help': 'Unlock the vault on this device with a 6-digit PIN or a pattern instead of your master password. It stays set up when you sign out, but signing in always asks for the password. It turns off after 5 failed attempts.',

@@ -157,6 +157,10 @@ export const es = {
   'settings.about': 'Acerca de',
   'settings.license': 'Software libre bajo la licencia GNU AGPL-3.0',
   'settings.sourceCode': 'Código fuente',
+  'settings.whatsNew': 'Novedades',
+  'whatsNew.title': 'Novedades de PassMe',
+  'whatsNew.older': 'Ver versiones anteriores',
+  'whatsNew.ok': 'Entendido',
 
   'quickUnlock.title': 'Desbloqueo rápido',
   'quickUnlock.help': 'Desbloquea la bóveda en este dispositivo con un PIN de 6 dígitos o un patrón en lugar de la contraseña maestra. Se conserva aunque cierres sesión, pero para iniciar sesión siempre se pide la contraseña. Tras 5 intentos fallidos se desactiva.',

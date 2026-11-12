@@ -8,6 +8,8 @@ export interface Prefs {
   theme: Theme
   lockMinutes: number
   lastEmail: string
+  // Última versión cuyas novedades ya se mostraron en este dispositivo
+  seenVersion: string
 }
 
 const KEY = 'passme:prefs'
@@ -18,14 +20,15 @@ function defaultLang(): Lang {
 }
 
 export function loadPrefs(): Prefs {
-  const defaults: Prefs = { lang: defaultLang(), theme: 'system', lockMinutes: 5, lastEmail: '' }
+  const defaults: Prefs = { lang: defaultLang(), theme: 'system', lockMinutes: 5, lastEmail: '', seenVersion: '' }
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Prefs>
     return {
       lang: raw.lang === 'es' || raw.lang === 'en' ? raw.lang : defaults.lang,
       theme: raw.theme === 'light' || raw.theme === 'dark' ? raw.theme : 'system',
       lockMinutes: LOCK_OPTIONS.includes(raw.lockMinutes ?? 0) ? raw.lockMinutes! : defaults.lockMinutes,
-      lastEmail: typeof raw.lastEmail === 'string' ? raw.lastEmail : ''
+      lastEmail: typeof raw.lastEmail === 'string' ? raw.lastEmail : '',
+      seenVersion: typeof raw.seenVersion === 'string' ? raw.seenVersion : ''
     }
   } catch {
     return defaults
