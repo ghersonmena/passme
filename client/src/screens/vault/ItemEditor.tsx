@@ -1,12 +1,14 @@
-import { ArrowLeft, Eye, EyeOff, MapPin, Plus, RefreshCw, X } from 'lucide-react'
-import { lazy, Suspense, useId, useState, type FormEvent } from 'react'
+import { ArrowLeft, Eye, EyeOff, FileUp, KeySquare, MapPin, Plus, RefreshCw, X } from 'lucide-react'
+import { lazy, Suspense, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { ErrorText, Field, PasswordField, PasswordStrength, Spinner } from '../../components/ui'
 import { generatePassword } from '../../crypto/generator'
+import { isValidPhrase } from '../../crypto/keys'
 import type { CustomField, ItemData } from '../../crypto/items'
 import { errorMessage, useI18n } from '../../i18n'
 import type { OpenVault } from '../../state/session'
 import { formatLatLng, isShortMapLink, parseLocation } from './geo'
-import { fieldLabel, optionLabel, TYPE_BY_ID, typeLabel, type FieldDef } from './itemTypes'
+import { fieldLabel, MULTILINE_KINDS, optionLabel, TYPE_BY_ID, typeLabel, type FieldDef } from './itemTypes'
+import { analyzeKey, hasPrivateKey, normCode, parseCodes, phraseWords, type KeyInfo } from './keyFiles'
 
 const LocationMap = lazy(() => import('./LocationMap'))
 
@@ -33,7 +35,25 @@ interface Props {
 }
 
 // Secreto de varias líneas (llave privada, frase semilla): oculto hasta que se pide editarlo
-function SecretTextField({ label, value, onChange, mono }: { label: string; value: string; onChange: (v: string) => void; mono?: boolean }) {
+function SecretTextField({
+  label,
+  value,
+  onChange,
+  mono,
+  rows = 4,
+  actions,
+  children
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  mono?: boolean
+  rows?: number
+  // Botones junto a la etiqueta (cargar archivo)
+  actions?: ReactNode
+  // Ayuda o avisos debajo
+  children?: ReactNode
+}) {
   const { t } = useI18n()
   const id = useId()
   const [visible, setVisible] = useState(!value)
@@ -41,24 +61,62 @@ function SecretTextField({ label, value, onChange, mono }: { label: string; valu
     <div className="field">
       <div className="label-row">
         <label htmlFor={id}>{label}</label>
-        <button
-          type="button"
-          className="icon-btn small"
-          onClick={() => setVisible((v) => !v)}
-          aria-label={visible ? t('common.hide') : t('common.show')}
-          title={visible ? t('common.hide') : t('common.show')}
-        >
-          {visible ? <EyeOff size={16} /> : <Eye size={16} />}
-        </button>
+        <span className="label-actions">
+          {actions}
+          <button
+            type="button"
+            className="icon-btn small"
+            onClick={() => setVisible((v) => !v)}
+            aria-label={visible ? t('common.hide') : t('common.show')}
+            title={visible ? t('common.hide') : t('common.show')}
+          >
+            {visible ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </span>
       </div>
       {visible ? (
-        <textarea id={id} rows={4} className={mono ? 'mono' : ''} value={value} onChange={(e) => onChange(e.target.value)} {...RAW} />
+        <textarea id={id} rows={rows} className={mono ? 'mono' : ''} value={value} onChange={(e) => onChange(e.target.value)} {...RAW} />
       ) : (
         <button type="button" id={id} className="secret-placeholder" onClick={() => setVisible(true)}>
           {'•'.repeat(16)}
         </button>
       )}
+      {children}
     </div>
+  )
+}
+
+const MAX_KEY_FILE = 256 * 1024
+
+// Lee un archivo de llave: texto (.asc, .pem, id_ed25519, .pub) o binario de GnuPG (.gpg)
+async function readKeyFile(file: File): Promise<KeyInfo | null> {
+  if (file.size > MAX_KEY_FILE) return null
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  // Un paquete PGP binario empieza con el bit alto encendido; un archivo de texto no
+  if (bytes.length && bytes[0]! & 0x80) return analyzeKey(bytes)
+  return analyzeKey(new TextDecoder().decode(bytes))
+}
+
+// Botón "Cargar archivo" de los campos de llave
+function FileButton({ onFile }: { onFile: (file: File) => void }) {
+  const { t } = useI18n()
+  const ref = useRef<HTMLInputElement>(null)
+  return (
+    <>
+      <button type="button" className="btn small" onClick={() => ref.current?.click()}>
+        <FileUp size={14} /> {t('key.loadFile')}
+      </button>
+      <input
+        ref={ref}
+        type="file"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ''
+          if (file) onFile(file)
+        }}
+      />
+    </>
   )
 }
 
@@ -72,6 +130,8 @@ export function ItemEditor({ initial, isNew, vaults, vaultId: initialVault, onSa
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [mapFor, setMapFor] = useState<string | null>(null)
+  const [keyInfo, setKeyInfo] = useState<KeyInfo | null>(null)
+  const [keyNotice, setKeyNotice] = useState('')
   const def = TYPE_BY_ID[data.type]
 
   const set = <K extends keyof ItemData>(key: K, value: ItemData[K]) => setData((d) => ({ ...d, [key]: value }))
@@ -79,6 +139,67 @@ export function ItemEditor({ initial, isNew, vaults, vaultId: initialVault, onSa
   const setUrl = (i: number, value: string) => set('urls', data.urls.map((u, j) => (j === i ? value : u)))
   const setCustom = (i: number, patch: Partial<CustomField>) =>
     set('custom', data.custom.map((c, j) => (j === i ? { ...c, ...patch } : c)))
+
+  // Una llave pegada o cargada llena sola los datos que estén vacíos (tipo, identidad, huella…)
+  const keyText = data.type === 'privateKey' ? `${data.fields.privateKey ?? ''}\n${data.fields.publicKey ?? ''}` : ''
+  useEffect(() => {
+    if (!keyText.trim()) {
+      setKeyInfo(null)
+      return
+    }
+    let current = true
+    void analyzeKey(keyText).then((info) => {
+      if (!current) return
+      setKeyInfo(info)
+      if (info) fillFromKey(info)
+    })
+    return () => {
+      current = false
+    }
+  }, [keyText])
+
+  function fillFromKey(info: KeyInfo) {
+    setData((d) => {
+      const fields = { ...d.fields }
+      const put = (key: string, value: string) => {
+        if (value && !fields[key]?.trim()) fields[key] = value
+      }
+      put('keyKind', info.kind)
+      put('identity', info.identity)
+      put('fingerprint', info.fingerprint)
+      put('publicKey', info.publicKey)
+      put('createdOn', info.createdOn)
+      put('expiresOn', info.expiresOn)
+      return { ...d, fields }
+    })
+  }
+
+  async function loadKeyFile(file: File) {
+    setKeyNotice('')
+    const info = await readKeyFile(file)
+    if (!info) {
+      setKeyNotice(t('key.notAKey', { file: file.name }))
+      return
+    }
+    // Lo privado va a su campo y lo público al suyo, venga del archivo que venga
+    if (info.privateKey) setField('privateKey', info.privateKey)
+    if (info.publicKey && (!info.privateKey || !data.fields.publicKey?.trim())) setField('publicKey', info.publicKey)
+    if (!info.privateKey) setKeyNotice(t('key.onlyPublic', { file: file.name }))
+    if (!data.name.trim()) set('name', file.name.replace(/\.(asc|gpg|key|pem|pub|txt)$/i, ''))
+    fillFromKey(info)
+  }
+
+  // Una llave privada pegada en una nota se puede pasar a su propio tipo
+  async function noteToKey() {
+    const info = await analyzeKey(data.note)
+    if (!info?.privateKey) return
+    setData((d) => ({
+      ...d,
+      type: 'privateKey',
+      fields: { ...d.fields, privateKey: info.privateKey },
+      note: d.note.replace(/-----BEGIN [A-Z0-9 ]*PRIVATE KEY( BLOCK)?-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY( BLOCK)?-----/g, '').trim()
+    }))
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -88,7 +209,14 @@ export function ItemEditor({ initial, isNew, vaults, vaultId: initialVault, onSa
     const fields: Record<string, string> = {}
     for (const fd of def.fields) {
       const value = data.fields[fd.key] ?? ''
-      if (value.trim()) fields[fd.key] = fd.kind === 'multiline' || fd.kind === 'secretText' ? value : value.trim()
+      if (value.trim()) fields[fd.key] = MULTILINE_KINDS.includes(fd.kind) ? value : value.trim()
+    }
+    // Solo se recuerdan como usados los códigos que siguen en la lista
+    if (fields.usedCodes) {
+      const current = new Set(parseCodes(fields.backupCodes ?? '').map(normCode))
+      const used = parseCodes(fields.usedCodes).filter((c) => current.has(normCode(c)))
+      if (used.length) fields.usedCodes = used.join('\n')
+      else delete fields.usedCodes
     }
     try {
       await onSave(
@@ -141,11 +269,57 @@ export function ItemEditor({ initial, isNew, vaults, vaultId: initialVault, onSa
           />
         )
       case 'secretText':
-        return <SecretTextField key={fd.key} label={label} value={value} onChange={onChange} mono={fd.mono} />
+        return (
+          <SecretTextField
+            key={fd.key}
+            label={label}
+            value={value}
+            onChange={onChange}
+            mono={fd.mono}
+            rows={fd.file ? 6 : 4}
+            actions={fd.file && <FileButton onFile={(file) => void loadKeyFile(file)} />}
+          >
+            {fd.file && (
+              <div className="hint">
+                {keyNotice ||
+                  (keyInfo?.encrypted && !data.fields.passphrase?.trim()
+                    ? t('key.needsPassphrase')
+                    : value.trim() && keyInfo && !keyInfo.privateKey
+                      ? t('key.looksPublic')
+                      : t('key.help'))}
+              </div>
+            )}
+          </SecretTextField>
+        )
+      case 'phrase': {
+        const words = phraseWords(value).length
+        return (
+          <SecretTextField key={fd.key} label={label} value={value} onChange={onChange} mono={fd.mono}>
+            {isValidPhrase(value) ? (
+              <p className="warning">{t('recovery.notPassMe')}</p>
+            ) : (
+              <div className="hint">{words ? t('recovery.words', { n: words }) : t('recovery.phraseHelp')}</div>
+            )}
+          </SecretTextField>
+        )
+      }
+      case 'codes': {
+        const n = parseCodes(value).length
+        return (
+          <SecretTextField key={fd.key} label={label} value={value} onChange={onChange} mono={fd.mono} rows={6}>
+            <div className="hint">{n ? t('recovery.codesCount', { n }) : t('recovery.codesHelp')}</div>
+          </SecretTextField>
+        )
+      }
+      case 'hidden':
+        return null
       case 'multiline':
         return (
           <div className="field" key={fd.key}>
-            <label htmlFor={`f-${fd.key}`}>{label}</label>
+            <div className="label-row">
+              <label htmlFor={`f-${fd.key}`}>{label}</label>
+              {fd.file && <FileButton onFile={(file) => void loadKeyFile(file)} />}
+            </div>
             <textarea
               id={`f-${fd.key}`}
               rows={3}
@@ -305,6 +479,14 @@ export function ItemEditor({ initial, isNew, vaults, vaultId: initialVault, onSa
               value={data.note}
               onChange={(e) => set('note', e.target.value)}
             />
+            {data.type === 'note' && hasPrivateKey(data.note) && (
+              <div className="notice row">
+                <span>{t('key.inNote')}</span>
+                <button type="button" className="btn small" onClick={() => void noteToKey()}>
+                  <KeySquare size={14} /> {t('key.toKeyType')}
+                </button>
+              </div>
+            )}
           </div>
 
           <fieldset className="custom-fields">

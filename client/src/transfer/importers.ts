@@ -1,5 +1,6 @@
 import { unzipSync } from 'fflate'
 import { emptyItem, normalizeItem, type CustomField, type ItemData, type ItemType } from '../crypto/items'
+import { hasPrivateKey } from '../screens/vault/keyFiles'
 import { parseCsv } from './csv'
 
 // Lee las exportaciones de otros gestores y las convierte a elementos de PassMe. Todo ocurre en el
@@ -107,8 +108,25 @@ function expiry(month: string, year: string): string {
   return `${String(m).padStart(2, '0')}/${year.slice(-2)}`
 }
 
+const PRIVATE_BLOCK = /-----BEGIN ([A-Z0-9 ]*)PRIVATE KEY( BLOCK)?-----[\s\S]*?-----END \1PRIVATE KEY\2-----/g
+
+// Las otras apps guardan las llaves privadas (la de Passbolt, una SSH…) como notas: aquí pasan a
+// ser del tipo Llave privada. La huella y lo demás se completan al abrirlas en el editor.
+function keyFromNote(d: ItemData): ItemData {
+  if (d.type !== 'note' || !hasPrivateKey(d.note)) return d
+  const blocks = d.note.match(PRIVATE_BLOCK)
+  if (!blocks) return d
+  const kind = blocks[0].includes('PGP') ? 'pgp' : blocks[0].includes('OPENSSH') ? 'ssh' : 'pem'
+  return {
+    ...d,
+    type: 'privateKey',
+    fields: { ...d.fields, keyKind: kind, privateKey: blocks.join('\n\n') },
+    note: d.note.replace(PRIVATE_BLOCK, '').trim()
+  }
+}
+
 function finish(source: string, items: ImportedItem[], skipped: number): ImportResult {
-  const kept = items.filter((i) => !isEmpty(i.data))
+  const kept = items.filter((i) => !isEmpty(i.data)).map((i) => ({ ...i, data: keyFromNote(i.data) }))
   return { source, items: kept, skipped: skipped + items.length - kept.length }
 }
 

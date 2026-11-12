@@ -18,7 +18,9 @@ export const ITEM_TYPES = [
   'bank',
   'crypto',
   'medical',
-  'passport'
+  'passport',
+  'privateKey',
+  'recovery'
 ] as const
 
 export type ItemType = (typeof ITEM_TYPES)[number]

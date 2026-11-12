@@ -285,6 +285,7 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
             replace(await updateItem(session, selected, { ...selected.data, favorite: !selected.data.favorite }))
           )
         }
+        onUpdate={(data) => act(async () => replace(await updateItem(session, selected, data)))}
         onTrash={() =>
           act(async () => {
             replace(await trashItem(session, selected))

@@ -1,8 +1,8 @@
-import { ArrowLeft, ExternalLink, Eye, EyeOff, Map as MapIcon, Pencil, QrCode, RotateCcw, Star, Trash2 } from 'lucide-react'
+import { ArrowLeft, Check, Download, ExternalLink, Eye, EyeOff, Map as MapIcon, Pencil, QrCode, RotateCcw, Star, Trash2 } from 'lucide-react'
 import QRCode from 'qrcode'
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { CopyButton, PasswordStrength } from '../../components/ui'
-import type { Item } from '../../crypto/items'
+import type { Item, ItemData } from '../../crypto/items'
 import { useI18n } from '../../i18n'
 import type { OpenVault } from '../../state/session'
 import {
@@ -19,6 +19,7 @@ import {
   type FieldDef
 } from './itemTypes'
 import { mapLinks, parseLocation } from './geo'
+import { codeStatus, isWordPhrase, keyFileName, normCode, parseCodes, phraseWords } from './keyFiles'
 import { safeUrl } from './url'
 import { VaultIcon } from './vaultLooks'
 
@@ -30,6 +31,8 @@ interface Props {
   onBack: () => void
   onEdit: () => void
   onToggleFavorite: () => void
+  // Cambios que se hacen desde el detalle (marcar un código de respaldo como usado)
+  onUpdate: (data: ItemData) => void
   onTrash: () => void
   onRestore: () => void
   onDeleteForever: () => void
@@ -41,6 +44,8 @@ interface ViewProps {
   secret?: boolean
   mono?: boolean
   multiline?: boolean
+  // Texto largo de ancho fijo (llaves): en un recuadro con scroll, sin partir los renglones
+  block?: boolean
   // Lo que se muestra en lugar del valor real (fechas, opciones, número de tarjeta con espacios)
   display?: string
   // Lo que se muestra mientras está oculto
@@ -51,14 +56,14 @@ interface ViewProps {
   below?: ReactNode
 }
 
-function FieldView({ label, value, secret, mono, multiline, display, masked, revealed, onReveal, actions, below }: ViewProps) {
+function FieldView({ label, value, secret, mono, multiline, block, display, masked, revealed, onReveal, actions, below }: ViewProps) {
   const { t } = useI18n()
   const hidden = secret && !revealed
   return (
     <div className="field-view">
       <dt>{label}</dt>
       <dd>
-        <span className={`value ${mono ? 'mono' : ''} ${multiline && !hidden ? 'note' : ''} ${hidden ? 'masked' : ''}`}>
+        <span className={`value ${mono ? 'mono' : ''} ${multiline && !hidden ? 'note' : ''} ${block && !hidden ? 'block' : ''} ${hidden ? 'masked' : ''}`}>
           {hidden ? (masked ?? '•'.repeat(12)) : (display ?? value)}
         </span>
         {secret && (
@@ -90,7 +95,124 @@ function LinkButton({ href, label, icon }: { href: string; label: string; icon: 
   )
 }
 
-export function ItemDetail({ item, vault, readOnly, onBack, onEdit, onToggleFavorite, onTrash, onRestore, onDeleteForever }: Props) {
+function download(name: string, text: string) {
+  const url = URL.createObjectURL(new Blob([text.endsWith('\n') ? text : `${text}\n`], { type: 'application/octet-stream' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+function RevealButton({ revealed, onReveal }: { revealed: boolean; onReveal: () => void }) {
+  const { t } = useI18n()
+  return (
+    <button
+      className="icon-btn"
+      onClick={onReveal}
+      aria-label={revealed ? t('common.hide') : t('common.show')}
+      title={revealed ? t('common.hide') : t('common.show')}
+    >
+      {revealed ? <EyeOff size={18} /> : <Eye size={18} />}
+    </button>
+  )
+}
+
+// Frase de recuperación: palabras numeradas para copiarlas a papel o compararlas
+function PhraseView({ label, value, revealed, onReveal }: { label: string; value: string; revealed: boolean; onReveal: () => void }) {
+  const words = isWordPhrase(value) ? phraseWords(value) : null
+  return (
+    <div className="field-view">
+      <dt>{label}</dt>
+      <dd>
+        {!revealed ? (
+          <span className="value mono masked">{words ? `${words.length} × ••••` : '•'.repeat(12)}</span>
+        ) : words ? (
+          <ol className="phrase-grid">
+            {words.map((w, i) => (
+              <li key={i}>
+                <span className="phrase-n">{i + 1}</span>
+                {w}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <span className="value mono note">{value}</span>
+        )}
+        <RevealButton revealed={revealed} onReveal={onReveal} />
+        <CopyButton value={words ? words.join(' ') : value} />
+      </dd>
+    </div>
+  )
+}
+
+interface CodesProps {
+  label: string
+  codes: string
+  used: string
+  revealed: boolean
+  onReveal: () => void
+  // Sin esto (papelera, solo lectura) no se pueden marcar
+  onUsed?: (used: string) => void
+}
+
+// Códigos de respaldo: cada uno se marca al usarlo y se lleva la cuenta de los que quedan
+function CodesView({ label, codes, used, revealed, onReveal, onUsed }: CodesProps) {
+  const { t } = useI18n()
+  const list = parseCodes(codes)
+  const status = codeStatus(codes, used)
+  const isUsed = (c: string) => status.used.has(normCode(c))
+  const left = list.filter((c) => !isUsed(c))
+  const level = status.left === 0 ? 'expired' : status.left <= 2 ? 'soon' : ''
+
+  function toggle(code: string) {
+    const next = isUsed(code) ? parseCodes(used).filter((c) => normCode(c) !== normCode(code)) : [...parseCodes(used), code]
+    onUsed?.(next.join('\n'))
+  }
+
+  return (
+    <div className="field-view">
+      <dt>
+        {label} <span className={`badge ${level}`}>{t('recovery.left', { left: status.left, total: status.total })}</span>
+      </dt>
+      <dd>
+        {revealed ? (
+          <ul className="codes-list">
+            {list.map((code, i) => {
+              const done = isUsed(code)
+              return (
+                <li key={i}>
+                  <button
+                    type="button"
+                    className={`code-chip ${done ? 'used' : ''}`}
+                    aria-pressed={done}
+                    disabled={!onUsed}
+                    onClick={() => toggle(code)}
+                    title={t(done ? 'recovery.markUnused' : 'recovery.markUsed', { code })}
+                    aria-label={t(done ? 'recovery.markUnused' : 'recovery.markUsed', { code })}
+                  >
+                    <span className="code-check" aria-hidden="true">
+                      {done && <Check size={12} />}
+                    </span>
+                    <span className="mono">{code}</span>
+                  </button>
+                  <CopyButton value={code} />
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <span className="value mono masked">{'•'.repeat(12)}</span>
+        )}
+        <RevealButton revealed={revealed} onReveal={onReveal} />
+        <CopyButton value={left.join('\n')} />
+      </dd>
+      {level && <p className={level === 'expired' ? 'error' : 'warning'}>{t(status.left ? 'recovery.fewLeft' : 'recovery.noneLeft')}</p>}
+    </div>
+  )
+}
+
+export function ItemDetail({ item, vault, readOnly, onBack, onEdit, onToggleFavorite, onUpdate, onTrash, onRestore, onDeleteForever }: Props) {
   const { t, lang } = useI18n()
   const [revealed, setRevealed] = useState<Set<string>>(new Set())
   const [wifiQr, setWifiQr] = useState<string | null>(null)
@@ -123,7 +245,30 @@ export function ItemDetail({ item, vault, readOnly, onBack, onEdit, onToggleFavo
 
   function renderField(fd: FieldDef) {
     const value = data.fields[fd.key] ?? ''
-    if (!value) return null
+    if (!value || fd.kind === 'hidden') return null
+    if (fd.kind === 'phrase') {
+      return <PhraseView key={fd.key} label={t(fieldLabel(fd))} value={value} revealed={revealed.has(fd.key)} onReveal={() => toggle(fd.key)} />
+    }
+    if (fd.kind === 'codes') {
+      return (
+        <CodesView
+          key={fd.key}
+          label={t(fieldLabel(fd))}
+          codes={value}
+          used={data.fields.usedCodes ?? ''}
+          revealed={revealed.has(fd.key)}
+          onReveal={() => toggle(fd.key)}
+          onUsed={
+            trashed || readOnly
+              ? undefined
+              : (used) => {
+                  const { usedCodes: _, ...rest } = data.fields
+                  onUpdate({ ...data, fields: used ? { ...rest, usedCodes: used } : rest })
+                }
+          }
+        />
+      )
+    }
     const secret = SECRET_KINDS.includes(fd.kind)
     const status = fd.expires ? expiryStatus(value) : null
     let label: ReactNode = t(fieldLabel(fd))
@@ -165,6 +310,14 @@ export function ItemDetail({ item, vault, readOnly, onBack, onEdit, onToggleFavo
       }
     }
     if (fd.kind === 'password' && revealed.has(fd.key)) below = <PasswordStrength password={value} />
+    if (fd.file) {
+      const name = keyFileName(data.name, data.fields.keyKind ?? '', fd.key === 'publicKey' ? 'public' : 'private')
+      actions = (
+        <button type="button" className="icon-btn" onClick={() => download(name, value)} aria-label={t('key.download')} title={t('key.download')}>
+          <Download size={18} />
+        </button>
+      )
+    }
 
     return (
       <FieldView
@@ -174,6 +327,7 @@ export function ItemDetail({ item, vault, readOnly, onBack, onEdit, onToggleFavo
         secret={secret}
         mono={fd.mono || fd.kind === 'password'}
         multiline={fd.kind === 'multiline' || fd.kind === 'secretText'}
+        block={fd.file}
         display={display}
         masked={masked}
         revealed={revealed.has(fd.key)}

@@ -262,3 +262,13 @@ describe('exportar', () => {
     expect(r.items[0]!.data.fields).toEqual({ username: 'ana', password: 'p,w"1' })
   })
 })
+
+describe('llaves en notas', () => {
+  it('una nota con una llave privada se importa como Llave privada', () => {
+    const key = '-----BEGIN PGP PRIVATE KEY BLOCK-----\n\nxcLY\n=abcd\n-----END PGP PRIVATE KEY BLOCK-----'
+    const csv = `name,notes\nPassbolt,"Mi llave\n${key}"\nSolo nota,hola`
+    const r = importText(csv, 'export.csv')
+    expect(r.items[0]!.data).toMatchObject({ type: 'privateKey', note: 'Mi llave', fields: { keyKind: 'pgp', privateKey: key } })
+    expect(r.items[1]!.data.type).toBe('note')
+  })
+})

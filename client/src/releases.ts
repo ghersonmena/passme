@@ -10,6 +10,24 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.3.0',
+    date: '2026-11-12',
+    notes: {
+      es: [
+        'Nuevo tipo Llave privada: guarda tu llave de Passbolt (PGP), llaves SSH, certificados PEM o llaves age',
+        'Carga la llave desde su archivo: la identidad, la huella, la llave pública y las fechas se llenan solas, y puedes descargarla de vuelta',
+        'Nuevo tipo Frases y códigos de recuperación: la frase se ve como palabras numeradas y cada código de respaldo se marca al usarlo',
+        'PassMe te avisa cuando te quedan pocos códigos, y las llaves privadas que vengan en notas al importar se acomodan en su tipo'
+      ],
+      en: [
+        'New Private key type: store your Passbolt key (PGP), SSH keys, PEM certificates or age keys',
+        'Load the key from its file: identity, fingerprint, public key and dates are filled in, and you can download it back',
+        'New Recovery phrases & codes type: the phrase shows as numbered words and each backup code is checked off when used',
+        'PassMe warns you when you are running low on codes, and private keys found in notes when importing get their own type'
+      ]
+    }
+  },
+  {
     version: '0.2.1',
     date: '2026-11-12',
     notes: {

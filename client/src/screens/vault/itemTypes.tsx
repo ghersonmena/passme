@@ -8,7 +8,9 @@ import {
   HeartPulse,
   IdCard,
   KeyRound,
+  KeySquare,
   Landmark,
+  LifeBuoy,
   MapPin,
   Server,
   SquareTerminal,
@@ -19,6 +21,7 @@ import {
 import type { ItemData, ItemType } from '../../crypto/items'
 import type { MessageKey } from '../../i18n'
 import { es } from '../../i18n/es'
+import { codeStatus } from './keyFiles'
 
 // Cómo se captura y se muestra cada campo:
 //   text       texto de una línea           secret     se oculta hasta que se pide verlo
@@ -26,6 +29,9 @@ import { es } from '../../i18n/es'
 //   secretText secreto de varias líneas     date       fecha (AAAA-MM-DD)
 //   expiry     vencimiento MM/AA            select     lista fija de opciones
 //   coordinates  latitud y longitud, con mapa para elegirlas
+//   phrase     frase de recuperación (se muestra como palabras numeradas)
+//   codes      códigos de respaldo, uno por renglón, que se marcan al usarlos
+//   hidden     lo guarda la app (qué códigos ya se usaron); no se edita a mano
 export type FieldKind =
   | 'text'
   | 'email'
@@ -40,6 +46,9 @@ export type FieldKind =
   | 'expiry'
   | 'select'
   | 'coordinates'
+  | 'phrase'
+  | 'codes'
+  | 'hidden'
 
 export interface FieldDef {
   key: string
@@ -50,6 +59,8 @@ export interface FieldDef {
   // Fechas de vencimiento: se avisa si ya pasaron o están por pasar
   expires?: boolean
   options?: string[]
+  // Se puede cargar desde un archivo y descargar como archivo (llaves)
+  file?: boolean
 }
 
 export interface TypeDef {
@@ -69,6 +80,7 @@ const f = (key: string, kind: FieldKind = 'text', extra: Partial<FieldDef> = {})
 const ENGINES = ['postgresql', 'mysql', 'mariadb', 'sqlserver', 'oracle', 'mongodb', 'redis', 'sqlite', 'other']
 const PROTOCOLS = ['ssh', 'rdp', 'vnc', 'sftp', 'ftp', 'web', 'other']
 const WIFI_SECURITY = ['wpa2', 'wpa3', 'wpa', 'wep', 'open']
+const KEY_KINDS = ['pgp', 'ssh', 'pem', 'age', 'other']
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
 export const lastDigits = (value = '') => {
@@ -262,12 +274,45 @@ export const TYPES: TypeDef[] = [
       f('authority')
     ],
     subtitle: (d) => first(d.fields.fullName, d.fields.nationality)
+  },
+  {
+    type: 'privateKey',
+    icon: KeySquare,
+    fields: [
+      f('keyKind', 'select', { options: KEY_KINDS }),
+      f('identity'),
+      f('privateKey', 'secretText', { mono: true, file: true }),
+      f('passphrase', 'secret'),
+      f('publicKey', 'multiline', { mono: true, file: true }),
+      f('fingerprint', 'text', { mono: true }),
+      f('createdOn', 'date'),
+      f('expiresOn', 'date', { expires: true })
+    ],
+    subtitle: (d) => first(d.fields.identity, d.fields.fingerprint)
+  },
+  {
+    type: 'recovery',
+    icon: LifeBuoy,
+    fields: [
+      f('account'),
+      f('recoveryPhrase', 'phrase', { mono: true }),
+      f('backupCodes', 'codes', { mono: true }),
+      f('usedCodes', 'hidden'),
+      f('generatedOn', 'date')
+    ],
+    subtitle: (d) => {
+      const { total, left } = codeStatus(d.fields.backupCodes ?? '', d.fields.usedCodes ?? '')
+      return [d.fields.account, total ? `${left}/${total}` : ''].filter(Boolean).join(' · ')
+    }
   }
 ]
 
 export const TYPE_BY_ID = Object.fromEntries(TYPES.map((t) => [t.type, t])) as Record<ItemType, TypeDef>
 
-export const SECRET_KINDS: FieldKind[] = ['secret', 'password', 'secretText']
+export const SECRET_KINDS: FieldKind[] = ['secret', 'password', 'secretText', 'phrase', 'codes', 'hidden']
+
+// Campos de varias líneas: se guardan sin recortar
+export const MULTILINE_KINDS: FieldKind[] = ['multiline', 'secretText', 'phrase', 'codes', 'hidden']
 
 export const fieldLabel = (fd: FieldDef) => `f.${fd.label ?? fd.key}` as MessageKey
 export const typeLabel = (type: ItemType) => `type.${type}` as MessageKey

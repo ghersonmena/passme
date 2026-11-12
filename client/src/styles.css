@@ -2103,3 +2103,111 @@ fieldset.tight legend {
 .release:not(.latest) ul {
   color: var(--muted);
 }
+
+/* --- Llaves privadas y recuperación --- */
+
+.btn.small {
+  min-height: 28px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  border-radius: 8px;
+}
+
+.label-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.notice.row {
+  justify-content: space-between;
+}
+
+.field-view dd:has(.phrase-grid, .codes-list) {
+  align-items: flex-start;
+}
+
+/* La cuadrícula de la frase es la misma del registro; en el detalle ocupa el ancho disponible */
+.field-view .phrase-grid {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0.35rem;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+}
+
+.value.block {
+  white-space: pre;
+  overflow: auto;
+  overflow-wrap: normal;
+  max-height: 14rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 0.8rem;
+}
+
+.codes-list {
+  flex: 1;
+  min-width: 0;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+}
+
+.codes-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.code-chip {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 36px;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.code-chip:disabled {
+  cursor: default;
+}
+
+.code-check {
+  flex-shrink: 0;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--muted);
+  border-radius: 4px;
+}
+
+.code-chip.used {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.code-chip .mono {
+  white-space: nowrap;
+}
+
+.code-chip.used .mono {
+  text-decoration: line-through;
+}
+
+.code-chip.used .code-check {
+  border-color: var(--ok);
+  background: var(--ok);
+  color: var(--surface);
+}

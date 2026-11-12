@@ -1,5 +1,18 @@
 # Cambios
 
+## v0.3.0
+
+- Tipo nuevo **Llave privada** (PGP como la de Passbolt, SSH, PEM/X.509, age): tipo, identidad,
+  llave privada, frase de paso, llave pública, huella, creación y vencimiento
+- Cargar la llave desde un archivo (.asc, .gpg binario, .pem, id_ed25519, .pub): se leen la
+  identidad, la huella (v4 y v6 de OpenPGP, SHA256 de SSH), las fechas y si tiene frase de paso; la
+  llave pública de una privada PGP se arma sola. Solo se lee la parte pública, lo secreto no se toca
+- Descargar la llave privada o pública como archivo desde el detalle
+- Tipo nuevo **Frases y códigos de recuperación**: cuenta, frase (cuadrícula de palabras
+  numeradas), códigos de respaldo que se marcan como usados desde el detalle, con aviso cuando
+  quedan dos o menos; si la frase es de 24 palabras BIP39 se recuerda no guardar aquí la de PassMe
+- Una nota con una llave privada se puede pasar al tipo nuevo, y al importar se convierte sola
+
 ## v0.2.1
 
 - Ventana de novedades: al entrar después de una actualización se muestra lo nuevo de cada versión

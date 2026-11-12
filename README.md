@@ -10,9 +10,11 @@ contraseña maestra.
 
 - Cuentas con contraseña maestra (Argon2id) y **frase de recuperación de 24 palabras**
 - Verificación en dos pasos (TOTP) con 10 códigos de respaldo
-- 15 tipos de elementos: inicios de sesión, notas seguras, tarjetas, identidades, credenciales de
+- 17 tipos de elementos: inicios de sesión, notas seguras, tarjetas, identidades, credenciales de
   API, bases de datos, servidores, licencias de software, claves SSH, redes Wi-Fi, ubicaciones
-  secretas, cuentas bancarias, carteras de criptomonedas, registros médicos y pasaportes
+  secretas, cuentas bancarias, carteras de criptomonedas, registros médicos, pasaportes, llaves
+  privadas (PGP como la de Passbolt, SSH, PEM, age; se cargan desde su archivo) y frases y códigos de
+  recuperación de otras plataformas (los códigos de respaldo se marcan al usarlos)
 - Campos personalizados, favoritos y papelera en cualquier elemento
 - Varias bóvedas por cuenta, cada una con su nombre, ícono, color y llave propia
 - Generador de contraseñas y de frases
