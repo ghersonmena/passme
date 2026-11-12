@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">PassMe</string>
+    <string name="setup_title">Conecta con tu servidor</string>
+    <string name="setup_subtitle">La dirección donde tienes PassMe. La app muestra tu misma bóveda y todo se sigue cifrando en este teléfono.</string>
+    <string name="setup_hint">https://pass.ejemplo.com</string>
+    <string name="setup_connect">Conectar</string>
+    <string name="setup_checking">Comprobando…</string>
+    <string name="setup_invalid">Escribe una dirección https:// válida.</string>
+    <string name="setup_unreachable">No se pudo conectar con PassMe en esa dirección.</string>
+    <string name="offline_title">Sin conexión con tu servidor</string>
+    <string name="offline_retry">Reintentar</string>
+    <string name="offline_change">Cambiar servidor</string>
+    <string name="autofill_unlock">Desbloquear PassMe para autocompletar</string>
+    <string name="autofill_inline">Autocompletar</string>
+    <string name="download_saved">Archivo guardado</string>
+    <string name="download_failed">No se pudo guardar el archivo</string>
+</resources>

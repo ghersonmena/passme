@@ -24,6 +24,8 @@ contraseña maestra.
 - Varios usuarios por servidor: registro abierto o solo por invitación del administrador, con el
   enlace enviado por correo
 - Interfaz en español e inglés, instalable en el teléfono
+- App de Android igual a la web que **autocompleta** usuarios y contraseñas en otras apps y en
+  Chrome, y ofrece guardar los nuevos ([docs/ANDROID.md](docs/ANDROID.md))
 
 Próximas versiones: códigos TOTP por elemento, monitor de seguridad, bóvedas compartidas y
 passkeys.
@@ -81,6 +83,9 @@ TEST_DATABASE_URL=postgres://passme:passme-dev@localhost:5433/passme_test npm te
 
 La prueba del servidor **borra** la base de datos que le indiques. Créala aparte con
 `docker exec passme_dev_db psql -U passme -c "CREATE DATABASE passme_test"`.
+
+La app de Android se compila con `cd android && ./gradlew assembleRelease`; los detalles están en
+[docs/ANDROID.md](docs/ANDROID.md).
 
 ## Licencia
 

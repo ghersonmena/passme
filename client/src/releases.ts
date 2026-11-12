@@ -10,6 +10,24 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.4.0',
+    date: '2026-11-12',
+    notes: {
+      es: [
+        'App de Android: la misma PassMe en tu teléfono, conectada a tu servidor',
+        'Autocompletar en otras apps y en Chrome: toca el campo, desbloquea PassMe y elige el login',
+        'Al iniciar sesión en una app o página nueva, Android ofrece guardar el usuario y la contraseña en PassMe',
+        'Actívalo en Ajustes → App de Android → Activar autocompletar'
+      ],
+      en: [
+        'Android app: the same PassMe on your phone, connected to your server',
+        'Autofill in other apps and in Chrome: tap the field, unlock PassMe and pick the login',
+        'When you sign in to a new app or site, Android offers to save the username and password to PassMe',
+        'Turn it on in Settings → Android app → Turn on autofill'
+      ]
+    }
+  },
+  {
     version: '0.3.0',
     date: '2026-11-12',
     notes: {

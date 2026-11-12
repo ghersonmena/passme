@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La llave P de client/public/icons/icon.svg, centrada en el área segura del ícono adaptativo -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.8"
+        android:scaleY="0.8"
+        android:translateX="6"
+        android:translateY="6">
+        <group
+            android:pivotX="48"
+            android:pivotY="48"
+            android:rotation="32">
+            <path
+                android:pathData="M39,34a14,14 0,1 0,28 0a14,14 0,1 0,-28 0"
+                android:strokeWidth="9"
+                android:strokeColor="#FFFFFF" />
+            <path
+                android:pathData="M39,34V76"
+                android:strokeLineCap="round"
+                android:strokeWidth="9"
+                android:strokeColor="#FFFFFF" />
+            <path
+                android:pathData="M39,60H49M39,70H46"
+                android:strokeLineCap="round"
+                android:strokeWidth="7"
+                android:strokeColor="#FFFFFF" />
+        </group>
+    </group>
+</vector>

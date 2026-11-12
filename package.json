@@ -1,6 +1,6 @@
 {
   "name": "passme",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Gestor de contraseñas zero-knowledge autoalojado",
   "license": "AGPL-3.0-only",

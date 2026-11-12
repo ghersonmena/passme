@@ -5,6 +5,7 @@ import { CopyButton, ErrorText, Field, PasswordField, PasswordStrength, Spinner 
 import { estimatePasswordBits, randomInt, strengthFromBits } from '../crypto/generator'
 import { createAccount, newRecoveryPhrase } from '../crypto/keys'
 import { errorMessage, useI18n, type Translate } from '../i18n'
+import { saveFile } from '../native'
 import { openSession, type Unlocked } from '../state/session'
 import { AuthLayout } from './AuthLayout'
 
@@ -60,12 +61,7 @@ export function Register({ config, invite, onUnlocked, onCancel }: Props) {
     const text = `PassMe — ${t('register.phraseFileTitle')}\n${email}\n\n${words
       .map((w, i) => `${String(i + 1).padStart(2, ' ')}. ${w}`)
       .join('\n')}\n`
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'passme-recovery-phrase.txt'
-    a.click()
-    URL.revokeObjectURL(url)
+    saveFile('passme-recovery-phrase.txt', text)
   }
 
   async function submitVerify(e: FormEvent) {

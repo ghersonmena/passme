@@ -5,6 +5,7 @@ import type { Item, ItemData, ItemType } from '../../crypto/items'
 import { deriveMasterKeys } from '../../crypto/kdf'
 import { unlockUserKey } from '../../crypto/keys'
 import { errorMessage, useI18n } from '../../i18n'
+import { saveFile } from '../../native'
 import { canWrite, createItems, createVault, type OpenVault, type Unlocked } from '../../state/session'
 import { EXPORT_FORMATS, exportVaults, type ExportFormat } from '../../transfer/exporters'
 import { importFile, type ImportResult } from '../../transfer/importers'
@@ -302,16 +303,6 @@ function ImportDialog({ session, items, onImported, onClose }: Props & { onClose
 
 // --- Exportar ---
 
-function download(name: string, mime: string, text: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: mime }))
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  a.click()
-  // Se revoca después para que el navegador alcance a empezar la descarga
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
-
 function ExportDialog({ session, items, onClose }: Omit<Props, 'onImported'> & { onClose: () => void }) {
   const { t } = useI18n()
   const [format, setFormat] = useState<ExportFormat>('passme')
@@ -343,7 +334,7 @@ function ExportDialog({ session, items, onClose }: Omit<Props, 'onImported'> & {
         .filter((v) => selected.has(v.id))
         .map((v) => ({ meta: v.meta, items: active.filter((i) => i.vaultId === v.id).map((i) => i.data) }))
       const file = exportVaults(format, vaults, t)
-      download(file.name, file.mime, file.text)
+      saveFile(file.name, file.text, file.mime)
       const total = vaults.reduce((n, v) => n + v.items.length, 0)
       setDone({ name: file.name, n: total - file.left, left: file.left })
       setPassword('')

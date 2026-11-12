@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La llave del ícono, para la sugerencia en el teclado -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <group
+        android:pivotX="48"
+        android:pivotY="48"
+        android:rotation="32">
+        <path
+            android:pathData="M39,34a14,14 0,1 0,28 0a14,14 0,1 0,-28 0"
+            android:strokeWidth="9"
+            android:strokeColor="#7C2D92" />
+        <path
+            android:pathData="M39,34V76M39,60H49M39,70H46"
+            android:strokeLineCap="round"
+            android:strokeWidth="8"
+            android:strokeColor="#7C2D92" />
+    </group>
+</vector>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paleta Ciruela de client/src/styles.css -->
+<resources>
+    <color name="brand">#7C2D92</color>
+    <color name="bg">#F8F5F9</color>
+    <color name="text">#22142A</color>
+    <color name="muted">#6B5C72</color>
+    <color name="danger">#B42318</color>
+</resources>

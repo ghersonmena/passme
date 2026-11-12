@@ -4,6 +4,7 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { CopyButton, PasswordStrength } from '../../components/ui'
 import type { Item, ItemData } from '../../crypto/items'
 import { useI18n } from '../../i18n'
+import { saveFile } from '../../native'
 import type { OpenVault } from '../../state/session'
 import {
   cardBrand,
@@ -93,15 +94,6 @@ function LinkButton({ href, label, icon }: { href: string; label: string; icon: 
       {icon}
     </a>
   )
-}
-
-function download(name: string, text: string) {
-  const url = URL.createObjectURL(new Blob([text.endsWith('\n') ? text : `${text}\n`], { type: 'application/octet-stream' }))
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 function RevealButton({ revealed, onReveal }: { revealed: boolean; onReveal: () => void }) {
@@ -313,7 +305,7 @@ export function ItemDetail({ item, vault, readOnly, onBack, onEdit, onToggleFavo
     if (fd.file) {
       const name = keyFileName(data.name, data.fields.keyKind ?? '', fd.key === 'publicKey' ? 'public' : 'private')
       actions = (
-        <button type="button" className="icon-btn" onClick={() => download(name, value)} aria-label={t('key.download')} title={t('key.download')}>
+        <button type="button" className="icon-btn" onClick={() => saveFile(name, value.endsWith('\n') ? value : `${value}\n`, 'application/octet-stream')} aria-label={t('key.download')} title={t('key.download')}>
           <Download size={18} />
         </button>
       )

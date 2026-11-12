@@ -1,0 +1,7 @@
+.gradle/
+build/
+local.properties
+# La llave con la que se firma la APK y sus contraseñas: nunca al repositorio
+keystore.properties
+*.jks
+*.keystore

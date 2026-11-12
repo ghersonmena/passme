@@ -1,5 +1,24 @@
 # Cambios
 
+## v0.4.0
+
+- **App de Android** (carpeta android/, Kotlin, sin frameworks): muestra la misma web del servidor
+  en un WebView, así que es idéntica a la web y se actualiza sola. La primera vez pide la dirección
+  del servidor (solo https) y se puede cambiar en Ajustes → App de Android
+- **Autocompletar** (AutofillService): en otras apps y en Chrome ("Autocompletar con otro
+  servicio") aparece "Desbloquear PassMe para autocompletar"; abre la web en modo autocompletar,
+  se desbloquea con PIN, patrón o contraseña maestra y se elige el login. El servicio nunca ve las
+  contraseñas: solo la web, que las descifra en el teléfono
+- Sugeridos por sitio (en navegadores) o por app; al elegir un login para una app se puede recordar
+  (se le agrega androidapp://paquete, el formato de Bitwarden y Proton Pass)
+- **Guardar**: al iniciar sesión en una app o página, Android ofrece guardar en PassMe; si ya existe
+  ese usuario para esa app o sitio se actualiza su contraseña
+- Sugerencias dentro del teclado (Android 11+) y lista desplegable en los demás casos
+- Puente web ↔ app con addWebMessageListener: solo existe en las páginas del servidor configurado
+- Descargas dentro de la app (frase de recuperación, exportaciones, llaves) con el selector de
+  archivos de Android; elegir archivos, ubicación para el mapa y enlaces externos funcionan
+- Sin respaldo en la nube de Google ni copia a otro teléfono de los datos de la app
+
 ## v0.3.0
 
 - Tipo nuevo **Llave privada** (PGP como la de Passbolt, SSH, PEM/X.509, age): tipo, identidad,

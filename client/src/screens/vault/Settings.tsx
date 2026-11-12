@@ -8,6 +8,7 @@ import { CopyButton, ErrorText, Field, PasswordField, PasswordStrength, Spinner 
 import { deriveMasterKeys } from '../../crypto/kdf'
 import { rewrapUserKey } from '../../crypto/keys'
 import { errorMessage, useI18n } from '../../i18n'
+import { saveFile } from '../../native'
 import { LOCK_OPTIONS, type Lang, type Prefs, type Theme } from '../../state/prefs'
 import { masterPasswordProblem, MIN_MASTER_LENGTH } from '../Register'
 import { QuickUnlockSettings } from './QuickUnlockSettings'
@@ -16,6 +17,8 @@ import type { Item } from '../../crypto/items'
 import type { OpenVault, Unlocked } from '../../state/session'
 import { TransferSettings } from './Transfer'
 import { AdminSettings } from './AdminSettings'
+import { AndroidSettings } from './AndroidSettings'
+import { isAndroidApp } from '../../native'
 
 const SOURCE_URL = 'https://github.com/ghersonmena/passme'
 
@@ -90,6 +93,8 @@ export function Settings({ session, items, onImported, prefs, onPrefs, onAccount
       <QuickUnlockSettings account={account} />
       <TwoFactor account={account} onChanged={onAccountChanged} />
       <ChangePassword account={account} onChanged={onAccountChanged} />
+
+      {isAndroidApp && <AndroidSettings />}
 
       <div className="card">
         <h3>{t('settings.account')}</h3>
@@ -187,12 +192,7 @@ function TwoFactor({ account, onChanged }: { account: Account; onChanged: () => 
 
   function downloadCodes() {
     const text = `PassMe — ${t('totp.backupTitle')}\n${account.email}\n\n${codes.join('\n')}\n`
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'passme-backup-codes.txt'
-    a.click()
-    URL.revokeObjectURL(url)
+    saveFile('passme-backup-codes.txt', text)
   }
 
   return (

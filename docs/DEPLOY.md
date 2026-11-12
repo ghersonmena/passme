@@ -36,6 +36,21 @@ Respalda lo siguiente:
 Los datos van cifrados, pero el respaldo también contiene correos y metadatos: guárdalo en un
 lugar seguro.
 
+## Publicar con un túnel con nombre de Cloudflare (dominio fijo)
+
+Es lo recomendado y lo que necesita la [app de Android](ANDROID.md): una dirección fija con
+certificado válido, sin abrir puertos (`cloudflared` solo hace conexiones de salida).
+
+1. Un dominio cuya zona esté en Cloudflare (sirve el plan gratuito y un dominio gratis como los de
+   DigitalPlat, `*.dpdns.org`, apuntando sus servidores de nombres a Cloudflare).
+2. En Cloudflare: **Zero Trust → Networks → Tunnels → Create a tunnel** (tipo Cloudflared). Corre
+   en el servidor el comando que da, `sudo cloudflared service install …`, para que arranque solo.
+3. **Published application → Add**: el dominio o subdominio, servicio `HTTPS` a `localhost:4040` y
+   en **TLS** activa **No TLS Verify** (el certificado local es autofirmado).
+4. En `.env`, `PUBLIC_URL=https://tu.dominio` (los enlaces de invitación la usan) y
+   `docker compose up -d api`.
+5. En **SSL/TLS → Edge Certificates** activa **Always Use HTTPS**: PassMe solo funciona por https.
+
 ## Publicar con Cloudflare Quick Tunnels
 
 Un Quick Tunnel da una URL pública `https://algo.trycloudflare.com` sin abrir puertos ni tener

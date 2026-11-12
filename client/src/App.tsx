@@ -3,6 +3,7 @@ import { api, ApiError, type Account, type Invite, type ServerConfig } from './a
 import { Spinner } from './components/ui'
 import { WhatsNew } from './components/WhatsNew'
 import { I18nProvider, useI18n } from './i18n'
+import { autofillMode } from './native'
 import { unseenReleases, type Release } from './releases'
 import { useAutoLock } from './state/autolock'
 import { applyTheme, loadPrefs, savePrefs, type Prefs } from './state/prefs'
@@ -12,6 +13,7 @@ import { Login } from './screens/Login'
 import { Recover } from './screens/Recover'
 import { Register } from './screens/Register'
 import { Unlock } from './screens/Unlock'
+import { AutofillApp } from './screens/autofill/AutofillApp'
 import { VaultApp } from './screens/vault/VaultApp'
 
 type Phase =
@@ -90,8 +92,9 @@ function Root({ prefs, onPrefs }: { prefs: Prefs; onPrefs: (p: Prefs) => void })
   // no tiene nada "nuevo": empieza ya con la versión actual.
   const onUnlocked = useCallback(
     (session: Unlocked, fresh = false) => {
-      const news = fresh ? [] : unseenReleases(prefs.seenVersion)
-      onPrefs({ ...prefs, lastEmail: session.account.email, seenVersion: news.length ? prefs.seenVersion : __APP_VERSION__ })
+      // Al autocompletar en otra app no se interrumpe con novedades
+      const news = fresh || autofillMode ? [] : unseenReleases(prefs.seenVersion)
+      onPrefs({ ...prefs, lastEmail: session.account.email, seenVersion: news.length || autofillMode ? prefs.seenVersion : __APP_VERSION__ })
       setPhase({ name: 'vault', session, news: news.length ? news : undefined })
     },
     [prefs, onPrefs]
@@ -163,6 +166,7 @@ function Root({ prefs, onPrefs }: { prefs: Prefs; onPrefs: (p: Prefs) => void })
     case 'unlock':
       return <Unlock account={phase.account} onUnlocked={onUnlocked} onLogout={logout} />
     case 'vault':
+      if (autofillMode) return <AutofillApp session={phase.session} mode={autofillMode} />
       return (
         <>
           <VaultApp
