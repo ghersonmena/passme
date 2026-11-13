@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Download, ExternalLink, Eye, EyeOff, Map as MapIcon, Pencil, QrCode, RotateCcw, Star, Trash2 } from 'lucide-react'
+import { ArrowLeft, Check, Download, ExternalLink, Eye, EyeOff, Map as MapIcon, Pencil, QrCode, RotateCcw, Share2, Star, Trash2 } from 'lucide-react'
 import QRCode from 'qrcode'
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { CopyButton, PasswordStrength } from '../../components/ui'
@@ -37,6 +37,10 @@ interface Props {
   onTrash: () => void
   onRestore: () => void
   onDeleteForever: () => void
+  // Compartir con otra cuenta o con un enlace; sin esto no se ofrece
+  onShare?: () => void
+  // Con cuántas personas o enlaces está compartido
+  shareCount?: number
 }
 
 interface ViewProps {
@@ -204,7 +208,7 @@ function CodesView({ label, codes, used, revealed, onReveal, onUsed }: CodesProp
   )
 }
 
-export function ItemDetail({ item, vault, readOnly, onBack, onEdit, onToggleFavorite, onUpdate, onTrash, onRestore, onDeleteForever }: Props) {
+export function ItemDetail({ item, vault, readOnly, onBack, onEdit, onToggleFavorite, onUpdate, onTrash, onRestore, onDeleteForever, onShare, shareCount = 0 }: Props) {
   const { t, lang } = useI18n()
   const [revealed, setRevealed] = useState<Set<string>>(new Set())
   const [wifiQr, setWifiQr] = useState<string | null>(null)
@@ -362,6 +366,16 @@ export function ItemDetail({ item, vault, readOnly, onBack, onEdit, onToggleFavo
         </div>
         {!trashed && !readOnly && (
           <div className="detail-actions">
+            {onShare && (
+              <button
+                className={`icon-btn ${shareCount ? 'active' : ''}`}
+                onClick={onShare}
+                aria-label={shareCount ? t('share.buttonCount', { n: shareCount }) : t('share.button')}
+                title={shareCount ? t('share.buttonCount', { n: shareCount }) : t('share.button')}
+              >
+                <Share2 size={18} />
+              </button>
+            )}
             <button
               className={`icon-btn ${data.favorite ? 'active' : ''}`}
               onClick={onToggleFavorite}

@@ -63,3 +63,31 @@ export function inviteMail(to: string, link: string, invitedBy: string, lang: 'e
 </div></body></html>`
   return { to, subject: t.subject, text, html }
 }
+
+const SHARE_TEXT = {
+  es: {
+    subject: 'Te compartieron una credencial en PassMe',
+    intro: (by: string) => `${by} te compartió una credencial en PassMe.`,
+    action: 'Abrir PassMe',
+    where: 'La verás en «Compartidos conmigo» al entrar con tu cuenta.'
+  },
+  en: {
+    subject: 'A login was shared with you on PassMe',
+    intro: (by: string) => `${by} shared a login with you on PassMe.`,
+    action: 'Open PassMe',
+    where: 'You will find it under “Shared with me” when you sign in.'
+  }
+}
+
+// Solo avisa: el correo no lleva nada de la credencial (va cifrada para la cuenta de quien la recibe)
+export function shareMail(to: string, link: string, sharedBy: string, lang: 'es' | 'en'): Mail {
+  const t = SHARE_TEXT[lang]
+  const text = `${t.intro(sharedBy)}\n${t.where}\n\n${t.action}: ${link}\n`
+  const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#f8f5f9;font-family:system-ui,sans-serif;color:#22142a">
+<div style="max-width:480px;margin:0 auto;background:#fff;border:1px solid #e3d8e6;border-radius:14px;padding:28px">
+<p style="margin:0 0 6px;font-size:20px;font-weight:700;color:#7c2d92">PassMe</p>
+<p style="font-size:15px;line-height:1.5">${escape(t.intro(sharedBy))}<br>${escape(t.where)}</p>
+<p style="margin:24px 0"><a href="${escape(link)}" style="display:inline-block;background:#7c2d92;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:600">${escape(t.action)}</a></p>
+</div></body></html>`
+  return { to, subject: t.subject, text, html }
+}

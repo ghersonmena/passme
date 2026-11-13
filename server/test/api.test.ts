@@ -17,6 +17,18 @@ import {
   unlockUserKey,
   unlockVaultKey
 } from '../../client/src/crypto/keys'
+import {
+  linkAuth,
+  newShareKey,
+  openForUser,
+  openOwnerKey,
+  openShareData,
+  sealForLink,
+  sealForUser,
+  sealOwnerKey,
+  sealShareData,
+  unlockPrivateKey
+} from '../../client/src/crypto/share'
 import { buildApp } from '../src/app'
 import type { Config } from '../src/config'
 import { connect, migrate, type Sql } from '../src/db'
@@ -481,6 +493,123 @@ describe.skipIf(!DB)('API de punta a punta', () => {
     expect((await new Client(app).call('POST', '/auth/register', other.payload)).status).toBe(200)
     await sql`DELETE FROM settings`
   })
+
+  it('comparte un elemento con otra cuenta y con un enlace con PIN', async () => {
+    // Dos cuentas nuevas: Sofía comparte, Tomás recibe
+    async function signUp(address: string) {
+      const c = new Client(app)
+      const { payload, encKey } = await createAccount(address, password, newRecoveryPhrase(), 'Personal')
+      expect((await c.call('POST', '/auth/register', payload)).status).toBe(200)
+      const account = (await c.call('GET', '/account')).body
+      const userKey = await unlockUserKey(encKey, account.protectedUserKey)
+      const [vault] = (await c.call('GET', '/vaults')).body as unknown as { id: string; protectedVaultKey: string }[]
+      const vaultKey = await unlockVaultKey(userKey, vault!.id, vault!.protectedVaultKey)
+      return { c, account, userKey, vaultId: vault!.id, vaultKey }
+    }
+    const sofia = await signUp('sofia@example.com')
+    const tomas = await signUp('tomas@example.com')
+    // El aviso por correo lleva la dirección de la app (PUBLIC_URL o el origen de la petición)
+    sofia.c.headers = { origin: 'https://passme.test' }
+
+    const item = crypto.randomUUID()
+    const data = { ...emptyItem('login'), name: 'Netflix', fields: { username: 'sofia', password: 'clave-netflix' } }
+    await sofia.c.call('POST', '/items', { id: item, vaultId: sofia.vaultId, data: await encryptItem(sofia.vaultKey, sofia.vaultId, item, data) })
+
+    // Buscar por correo: cuenta, inexistente o uno mismo
+    const found = (await sofia.c.call('GET', '/users/lookup?email=TOMAS@example.com')).body
+    expect(found.user.email).toBe('tomas@example.com')
+    expect((await sofia.c.call('GET', '/users/lookup?email=nadie@example.com')).body.user).toBeNull()
+    expect((await sofia.c.call('GET', '/users/lookup?email=sofia@example.com')).body.error).toBe('share_self')
+
+    // Con otra cuenta
+    const shareId = crypto.randomUUID()
+    const k = await newShareKey()
+    outbox.length = 0
+    const shared = await sofia.c.call('POST', '/shares', {
+      kind: 'user',
+      id: shareId,
+      itemId: item,
+      email: 'tomas@example.com',
+      data: await sealShareData(k, shareId, data),
+      ownerKey: await sealOwnerKey(sofia.userKey, k, shareId),
+      recipientKey: await sealForUser(k, shareId, found.user.publicKey)
+    })
+    expect(shared.body.emailed).toBe(true)
+    expect(outbox[0]!.to).toBe('tomas@example.com')
+    expect(outbox[0]!.text).toContain('sofia@example.com')
+    expect(outbox[0]!.text).not.toContain('clave-netflix')
+
+    // El servidor solo tiene la copia cifrada
+    const [row] = await sql`SELECT data, recipient_key FROM shares WHERE id = ${shareId}`
+    expect(row!.data).not.toContain('Netflix')
+
+    const incoming = (await tomas.c.call('GET', '/shares')).body.incoming as { id: string; from: string; data: string; recipientKey: string; seenAt: string | null }[]
+    expect(incoming).toHaveLength(1)
+    expect(incoming[0]!.from).toBe('sofia@example.com')
+    expect(incoming[0]!.seenAt).toBeNull()
+    const privateKey = await unlockPrivateKey(tomas.userKey, tomas.account.protectedPrivateKey)
+    const opened = await openShareData(await openForUser(privateKey, shareId, incoming[0]!.recipientKey), shareId, incoming[0]!.data)
+    expect(opened.fields.password).toBe('clave-netflix')
+    await tomas.c.call('POST', '/shares/seen', { ids: [shareId] })
+    expect((await tomas.c.call('GET', '/shares')).body.incoming[0].seenAt).not.toBeNull()
+
+    // Tomás no puede cambiar la copia ni compartir lo que no es suyo
+    expect((await tomas.c.call('PUT', `/shares/${shareId}`, { data: incoming[0]!.data })).status).toBe(404)
+    const stolen = await tomas.c.call('POST', '/shares', {
+      kind: 'user', id: crypto.randomUUID(), itemId: item, email: 'sofia@example.com',
+      data: incoming[0]!.data, ownerKey: incoming[0]!.data, recipientKey: incoming[0]!.recipientKey
+    })
+    expect(stolen.status).toBe(404)
+
+    // Sofía edita: con su copia de la llave vuelve a cifrar, y Tomás ve el cambio
+    const outgoing = (await sofia.c.call('GET', '/shares')).body.outgoing as { id: string; ownerKey: string }[]
+    const again = await openOwnerKey(sofia.userKey, shareId, outgoing[0]!.ownerKey)
+    const changed = { ...data, fields: { ...data.fields, password: 'clave-nueva' } }
+    expect((await sofia.c.call('PUT', `/shares/${shareId}`, { data: await sealShareData(again, shareId, changed) })).status).toBe(200)
+    const updated = (await tomas.c.call('GET', '/shares')).body.incoming[0]
+    expect((await openShareData(await openForUser(privateKey, shareId, updated.recipientKey), shareId, updated.data)).fields.password).toBe('clave-nueva')
+
+    // Con enlace y PIN, para alguien sin cuenta
+    const linkId = crypto.randomUUID()
+    const lk = await newShareKey()
+    const link = await sealForLink(lk, linkId, '4821')
+    const created = await sofia.c.call('POST', '/shares', {
+      kind: 'link', id: linkId, itemId: item, email: 'externo@example.com',
+      data: await sealShareData(lk, linkId, data), ownerKey: await sealOwnerKey(sofia.userKey, lk, linkId),
+      recipientKey: link.recipientKey, pinKdf: link.pinKdf, pinAuth: link.pinAuth, days: 7
+    })
+    expect(created.status).toBe(200)
+
+    const anon = new Client(app)
+    const info = (await anon.call('GET', `/public/shares/${linkId}`)).body
+    expect(info.locked).toBe(false)
+    const wrong = await linkAuth(link.secret, '0000', info.pinKdf)
+    const bad = await anon.call('POST', `/public/shares/${linkId}/open`, { pinAuth: wrong.pinAuth })
+    expect(bad.body).toMatchObject({ error: 'wrong_pin', attemptsLeft: 4 })
+
+    const right = await linkAuth(link.secret, '4821', info.pinKdf)
+    const ok = (await anon.call('POST', `/public/shares/${linkId}/open`, { pinAuth: right.pinAuth })).body
+    expect(ok.from).toBe('sofia@example.com')
+    expect((await right.open(linkId, ok.recipientKey, ok.data)).fields.password).toBe('clave-netflix')
+    const mine = (await sofia.c.call('GET', '/shares')).body.outgoing.find((s: { id: string }) => s.id === linkId)
+    expect(mine.views).toBe(1)
+
+    // Cinco PIN equivocados bloquean el enlace, incluso para el PIN correcto
+    for (let i = 0; i < 5; i++) await anon.call('POST', `/public/shares/${linkId}/open`, { pinAuth: wrong.pinAuth })
+    expect((await anon.call('POST', `/public/shares/${linkId}/open`, { pinAuth: right.pinAuth })).body.error).toBe('share_locked')
+    expect((await anon.call('GET', `/public/shares/${linkId}`)).body.locked).toBe(true)
+
+    // Un enlace vencido deja de existir
+    await sql`UPDATE shares SET expires_at = now() - interval '1 minute' WHERE id = ${linkId}`
+    expect((await anon.call('GET', `/public/shares/${linkId}`)).body.error).toBe('share_gone')
+
+    // Quien recibe puede quitarlo de su lista; borrar el elemento borra lo compartido
+    expect((await tomas.c.call('DELETE', `/shares/${shareId}`)).status).toBe(200)
+    expect((await tomas.c.call('GET', '/shares')).body.incoming).toHaveLength(0)
+    await sofia.c.call('POST', `/items/${item}/trash`)
+    expect((await sofia.c.call('DELETE', `/items/${item}`)).status).toBe(200)
+    expect((await sofia.c.call('GET', '/shares')).body.outgoing).toHaveLength(0)
+  }, 60_000)
 
   it('con el registro cerrado no acepta cuentas nuevas', async () => {
     const closed = await buildApp(

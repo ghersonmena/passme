@@ -82,6 +82,56 @@ export interface NewPassword {
   protectedUserKey: string
 }
 
+// --- Compartir ---
+
+export interface OutgoingShare {
+  id: string
+  itemId: string
+  kind: 'user' | 'link'
+  email: string
+  ownerKey: string
+  locked: boolean
+  views: number
+  seenAt: string | null
+  lastViewedAt: string | null
+  expiresAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface IncomingShare {
+  id: string
+  from: string
+  data: string
+  recipientKey: string
+  seenAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ShareCreate {
+  id: string
+  itemId: string
+  email: string
+  data: string
+  ownerKey: string
+  recipientKey: string
+}
+
+export interface PublicShare {
+  pinKdf: KdfParams
+  expiresAt: string
+  locked: boolean
+}
+
+export interface OpenedShare {
+  data: string
+  recipientKey: string
+  from: string
+  expiresAt: string
+  updatedAt: string
+}
+
 export const api = {
   config: () => request<ServerConfig>('GET', '/config'),
 
@@ -118,6 +168,19 @@ export const api = {
   createInvite: (email: string, lang: 'es' | 'en') =>
     request<{ id: string; link: string; emailed: boolean; mail: boolean }>('POST', '/admin/invitations', { email, lang }),
   revokeInvite: (id: string) => request<{ ok: true }>('DELETE', `/admin/invitations/${id}`),
+
+  lookupUser: (email: string) =>
+    request<{ user: { email: string; publicKey: string } | null }>('GET', `/users/lookup?email=${encodeURIComponent(email)}`),
+  shares: () => request<{ outgoing: OutgoingShare[]; incoming: IncomingShare[] }>('GET', '/shares'),
+  shareWithUser: (share: ShareCreate, lang: string) =>
+    request<{ id: string; emailed: boolean }>('POST', '/shares', { kind: 'user', ...share, lang }),
+  shareByLink: (share: ShareCreate & { pinKdf: KdfParams; pinAuth: string; days: number }) =>
+    request<{ id: string }>('POST', '/shares', { kind: 'link', ...share }),
+  updateShare: (id: string, data: string) => request<{ ok: true }>('PUT', `/shares/${id}`, { data }),
+  deleteShare: (id: string) => request<{ ok: true }>('DELETE', `/shares/${id}`),
+  markSharesSeen: (ids: string[]) => request<{ ok: true }>('POST', '/shares/seen', { ids }),
+  publicShare: (id: string) => request<PublicShare>('GET', `/public/shares/${id}`),
+  openPublicShare: (id: string, pinAuth: string) => request<OpenedShare>('POST', `/public/shares/${id}/open`, { pinAuth }),
 
   vaults: () => request<EncryptedVault[]>('GET', '/vaults'),
   createVault: (id: string, data: string, protectedVaultKey: string) =>

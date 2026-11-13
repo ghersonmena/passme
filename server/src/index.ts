@@ -22,6 +22,7 @@ await migrate(sql, (msg) => app.log.info(msg))
 const cleanup = setInterval(() => {
   sql`DELETE FROM sessions WHERE expires_at < now()`.catch((err) => app.log.error(err))
   sql`DELETE FROM invitations WHERE used_at IS NULL AND expires_at < now()`.catch((err) => app.log.error(err))
+  sql`DELETE FROM shares WHERE kind = 'link' AND expires_at < now()`.catch((err) => app.log.error(err))
 }, 60 * 60 * 1000)
 
 async function shutdown() {

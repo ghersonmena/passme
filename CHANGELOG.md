@@ -1,5 +1,20 @@
 # Cambios
 
+## v0.4.1
+
+- **Compartir** un elemento por correo (botón Compartir en el detalle):
+  - Con una **cuenta** de este servidor: la copia se cifra con una llave propia (K) que va cifrada
+    con la llave pública ECDH P-256 de la cuenta. Al entrar ve «X te compartió Y» y lo encuentra en
+    **Compartidos** (solo lectura, con opción de guardar una copia o quitarlo). Si hay SMTP, se le
+    avisa por correo sin nada secreto
+  - **Sin cuenta**: enlace `?share=<id>#<secreto>` más un **PIN**. El secreto va después del "#" y
+    nunca llega al servidor; la llave sale de él junto con Argon2id(PIN), así que el servidor no
+    puede probar PIN por su cuenta. Vence en 1, 7 o 30 días y se bloquea con 5 PIN equivocados. El
+    enlace se manda desde la app de correo de quien comparte; el PIN, por otro medio
+- Al editar un elemento compartido se vuelve a cifrar cada copia; se puede dejar de compartir y ver
+  si ya lo vieron o cuántas veces se abrió el enlace
+- Migración 005: tabla shares. Rutas /shares, /users/lookup y /public/shares/:id
+
 ## v0.4.0
 
 - **App de Android** (carpeta android/, Kotlin, sin frameworks): muestra la misma web del servidor

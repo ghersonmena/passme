@@ -24,6 +24,8 @@ contraseña maestra.
 - Varios usuarios por servidor: registro abierto o solo por invitación del administrador, con el
   enlace enviado por correo
 - Interfaz en español e inglés, instalable en el teléfono
+- Compartir un elemento por correo: con otra cuenta del servidor (lo ve al entrar) o con alguien sin
+  cuenta mediante un enlace que solo abre con un PIN, que vence y se bloquea con 5 PIN equivocados
 - App de Android igual a la web que **autocompleta** usuarios y contraseñas en otras apps y en
   Chrome, y ofrece guardar los nuevos ([docs/ANDROID.md](docs/ANDROID.md))
 

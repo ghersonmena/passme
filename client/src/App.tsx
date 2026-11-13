@@ -9,6 +9,7 @@ import { useAutoLock } from './state/autolock'
 import { applyTheme, loadPrefs, savePrefs, type Prefs } from './state/prefs'
 import type { Unlocked } from './state/session'
 import { AuthLayout } from './screens/AuthLayout'
+import { ExternalShare } from './screens/ExternalShare'
 import { Login } from './screens/Login'
 import { Recover } from './screens/Recover'
 import { Register } from './screens/Register'
@@ -24,6 +25,7 @@ type Phase =
   | { name: 'recover' }
   | { name: 'unlock'; account: Account }
   | { name: 'vault'; session: Unlocked; news?: Release[] }
+  | { name: 'external'; id: string; secret: string }
 
 export function App() {
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
@@ -60,6 +62,12 @@ function Root({ prefs, onPrefs }: { prefs: Prefs; onPrefs: (p: Prefs) => void })
       setConfig(await api.config())
     } catch {
       setPhase({ name: 'offline' })
+      return
+    }
+    // Credencial compartida con enlace: ?share=<id>#<secreto>. No hace falta cuenta.
+    const shareId = new URLSearchParams(location.search).get('share')
+    if (shareId) {
+      setPhase({ name: 'external', id: shareId, secret: location.hash.slice(1) })
       return
     }
     // Enlace de invitación: ?invite=<token>. Se quita de la barra para que no quede en el historial.
@@ -118,6 +126,8 @@ function Root({ prefs, onPrefs }: { prefs: Prefs; onPrefs: (p: Prefs) => void })
   useAutoLock(phase.name === 'vault', prefs.lockMinutes, lock)
 
   switch (phase.name) {
+    case 'external':
+      return <ExternalShare id={phase.id} secret={phase.secret} />
     case 'loading':
       return (
         <main className="auth">

@@ -10,6 +10,24 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.4.1',
+    date: '2026-11-12',
+    notes: {
+      es: [
+        'Comparte una credencial por correo con el botón Compartir del elemento',
+        'Si la persona tiene cuenta en tu PassMe, la verá al entrar en «Compartidos» y le diremos quién se la compartió',
+        'Si no tiene cuenta, recibe un enlace que solo se abre con un PIN secreto que tú le pasas; el enlace vence y se bloquea con 5 PIN equivocados',
+        'Si editas lo que compartiste, quien lo recibió ve la versión nueva; puedes dejar de compartir cuando quieras'
+      ],
+      en: [
+        'Share a login by email with the item’s Share button',
+        'If they have an account on your PassMe, they’ll see it under “Shared” when they sign in, along with who shared it',
+        'If not, they get a link that only opens with a secret PIN you give them; the link expires and locks after 5 wrong PINs',
+        'If you edit what you shared, they see the new version; you can stop sharing anytime'
+      ]
+    }
+  },
+  {
     version: '0.4.0',
     date: '2026-11-12',
     notes: {

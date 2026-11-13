@@ -9,6 +9,7 @@ import {
   Star,
   StarOff,
   Trash2,
+  Users,
   Wand2
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -19,6 +20,7 @@ import { emptyItem, type Item, type ItemData, type ItemType } from '../../crypto
 import type { VaultMeta } from '../../crypto/keys'
 import { errorMessage, useI18n, type MessageKey } from '../../i18n'
 import type { Prefs } from '../../state/prefs'
+import { loadShares, syncShares, type Shares } from '../../state/shares'
 import {
   canWrite,
   createItem,
@@ -38,15 +40,18 @@ import { ItemEditor } from './ItemEditor'
 import { QuickActions, QuickPanel } from './QuickView'
 import { searchText, TYPE_BY_ID, TYPES, typeLabel } from './itemTypes'
 import { Settings } from './Settings'
+import { ShareDialog } from './ShareDialog'
+import { NewSharesModal, SharedDetail, SharedList } from './SharedWithMe'
 import { TypePicker } from './TypePicker'
 import { VaultEditor } from './VaultEditor'
 import { VaultIcon } from './vaultLooks'
 
-type View = 'all' | 'favorites' | 'trash' | 'generator' | 'settings'
+type View = 'all' | 'favorites' | 'shared' | 'trash' | 'generator' | 'settings'
 
 const NAV: { view: View; icon: ReactNode; label: MessageKey }[] = [
   { view: 'all', icon: <LayoutGrid size={20} />, label: 'nav.all' },
   { view: 'favorites', icon: <Star size={20} />, label: 'nav.favorites' },
+  { view: 'shared', icon: <Users size={20} />, label: 'nav.shared' },
   { view: 'trash', icon: <Trash2 size={20} />, label: 'nav.trash' },
   { view: 'generator', icon: <Wand2 size={20} />, label: 'nav.generator' },
   { view: 'settings', icon: <SettingsIcon size={20} />, label: 'nav.settings' }
@@ -84,6 +89,12 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
   // Último elemento enviado a la papelera deslizando, para poder deshacerlo
   const [undo, setUndo] = useState<Item | null>(null)
   const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  // Lo compartido por ti y contigo
+  const [shares, setShares] = useState<Shares | null>(null)
+  const [sharedId, setSharedId] = useState<string | null>(null)
+  const [shareOpen, setShareOpen] = useState(false)
+  const [newShares, setNewShares] = useState(false)
+  const [flash, setFlash] = useState('')
 
   const { vaults } = session
   const vaultById = useMemo(() => new Map(vaults.map((v) => [v.id, v])), [vaults])
@@ -101,10 +112,36 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
     }
   }
 
-  // Se cargan una vez al abrir la bóveda
+  async function reloadShares(): Promise<Shares | null> {
+    try {
+      const loaded = await loadShares(session)
+      setShares(loaded)
+      return loaded
+    } catch {
+      return null
+    }
+  }
+
+  // Se cargan una vez al abrir la bóveda. Si alguien te compartió algo nuevo, se avisa.
   useEffect(() => {
     void reload()
+    void reloadShares().then((loaded) => {
+      if (loaded?.incoming.some((s) => !s.seen)) setNewShares(true)
+    })
   }, [])
+
+  const unseen = shares?.incoming.filter((s) => !s.seen) ?? []
+
+  function markSeen(ids: string[]) {
+    if (!ids.length) return
+    void api.markSharesSeen(ids).catch(() => {})
+    setShares((cur) => cur && { ...cur, incoming: cur.incoming.map((s) => (ids.includes(s.id) ? { ...s, seen: true } : s)) })
+  }
+
+  function showFlash(message: string) {
+    setFlash(message)
+    setTimeout(() => setFlash(''), 4000)
+  }
 
   // Elementos activos por bóveda, para los contadores
   const counts = useMemo(() => {
@@ -170,6 +207,10 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
     replace(saved)
     setSelectedId(saved.id)
     setEditing(null)
+    // Quien lo recibió ve la versión nueva
+    if (shares?.outgoing.some((s) => s.itemId === saved.id)) {
+      await syncShares(session, saved.id, saved.data, shares.outgoing).catch((err) => setError(errorMessage(t, err)))
+    }
   }
 
   // --- Gestos de la lista ---
@@ -240,6 +281,7 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
     setQuickId(null)
     setView(next)
     setSelectedId(null)
+    setSharedId(null)
     setEditing(null)
     setQuery('')
     setTypeFilter('')
@@ -249,7 +291,8 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
   const targetVault = currentVault && canWrite(currentVault) ? currentVault : writable[0]
 
   const isList = view === 'all' || view === 'favorites' || view === 'trash'
-  const showDetail = isList && (editing !== null || selected !== null)
+  const sharedSelected = shares?.incoming.find((s) => s.id === sharedId) ?? null
+  const showDetail = (isList && (editing !== null || selected !== null)) || (view === 'shared' && !!sharedSelected)
 
   let detail: ReactNode = (
     <div className="empty">
@@ -280,6 +323,8 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
         readOnly={!canWrite(selectedVault ?? undefined)}
         onBack={() => setSelectedId(null)}
         onEdit={() => setEditing({ mode: 'edit' })}
+        onShare={canWrite(selectedVault ?? undefined) && !selected.trashedAt ? () => setShareOpen(true) : undefined}
+        shareCount={shares?.outgoing.filter((s) => s.itemId === selected.id).length ?? 0}
         onToggleFavorite={() =>
           act(async () =>
             replace(await updateItem(session, selected, { ...selected.data, favorite: !selected.data.favorite }))
@@ -370,6 +415,7 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
           <button key={n.view} className={`nav-item ${view === n.view ? 'on' : ''}`} onClick={() => go(n.view)}>
             {n.icon}
             <span>{t(n.label)}</span>
+            {n.view === 'shared' && unseen.length > 0 && <span className="count new">{unseen.length}</span>}
           </button>
         ))}
         <div className="sidebar-spacer" />
@@ -529,6 +575,51 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
             </section>
             <section className="detail-pane">{detail}</section>
           </>
+        ) : view === 'shared' ? (
+          <>
+            <section className="list-pane">
+              <header className="list-header">
+                <h2 className="list-heading">{t('nav.shared')}</h2>
+              </header>
+              <SharedList
+                shared={shares?.incoming ?? []}
+                selectedId={sharedId}
+                onSelect={(id) => {
+                  setSharedId(id)
+                  markSeen(unseen.filter((s) => s.id === id).map((s) => s.id))
+                }}
+              />
+            </section>
+            <section className="detail-pane">
+              {sharedSelected ? (
+                <SharedDetail
+                  key={sharedSelected.id}
+                  shared={sharedSelected}
+                  copyTo={targetVault}
+                  onBack={() => setSharedId(null)}
+                  onCopy={() =>
+                    act(async () => {
+                      const saved = await createItem(session, targetVault!.id, { ...sharedSelected.item.data, favorite: false })
+                      replace(saved)
+                      showFlash(t('shared.copied', { vault: targetVault!.meta.name }))
+                    })
+                  }
+                  onRemove={() =>
+                    act(async () => {
+                      await api.deleteShare(sharedSelected.id)
+                      setSharedId(null)
+                      setShares((cur) => cur && { ...cur, incoming: cur.incoming.filter((s) => s.id !== sharedSelected.id) })
+                    })
+                  }
+                />
+              ) : (
+                <div className="empty">
+                  <Users size={40} strokeWidth={1.4} />
+                  <p>{t('vault.selectItem')}</p>
+                </div>
+              )}
+            </section>
+          </>
         ) : view === 'generator' ? (
           <Generator />
         ) : (
@@ -547,6 +638,12 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
         )}
       </div>
 
+      {flash && (
+        <div className="toast" role="status">
+          <span>{flash}</span>
+        </div>
+      )}
+
       {undo && (
         <div className="toast" role="status">
           <span>{t('swipe.trashed', { name: undo.data.name || t('item.untitled') })}</span>
@@ -561,9 +658,40 @@ export function VaultApp({ session, prefs, onPrefs, onSession, onLock, onLogout 
           <button key={n.view} className={view === n.view ? 'on' : ''} onClick={() => go(n.view)}>
             {n.icon}
             <span>{t(n.label)}</span>
+            {n.view === 'shared' && unseen.length > 0 && <span className="nav-dot" aria-label={t('shared.newCount', { n: unseen.length })} />}
           </button>
         ))}
       </nav>
+
+      {shareOpen && selected && (
+        <ShareDialog
+          session={session}
+          item={selected}
+          shares={shares?.outgoing.filter((s) => s.itemId === selected.id) ?? []}
+          onChanged={async () => {
+            await reloadShares()
+          }}
+          onRevoke={async (share) => {
+            await api.deleteShare(share.id)
+            await reloadShares()
+          }}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
+
+      {newShares && unseen.length > 0 && (
+        <NewSharesModal
+          shared={unseen}
+          onOpen={() => {
+            setNewShares(false)
+            go('shared')
+          }}
+          onClose={() => {
+            setNewShares(false)
+            markSeen(unseen.map((s) => s.id))
+          }}
+        />
+      )}
 
       {vaultSheet && (
         <Modal title={t('vaults.title')} onClose={() => setVaultSheet(false)}>

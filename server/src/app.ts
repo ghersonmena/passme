@@ -6,6 +6,7 @@ import { HttpError } from './http.js'
 import { accountRoutes } from './routes/account.js'
 import { adminRoutes } from './routes/admin.js'
 import { authRoutes } from './routes/auth.js'
+import { publicShareRoutes, shareRoutes } from './routes/shares.js'
 import { vaultRoutes } from './routes/vault.js'
 
 // Toda petición que cambia algo debe traer este encabezado. Un sitio ajeno no puede mandarlo sin
@@ -56,6 +57,8 @@ export async function buildApp(ctx: Context, logger: boolean | object = true): P
       await api.register(async (scope) => accountRoutes(scope, ctx))
       await api.register(async (scope) => vaultRoutes(scope, ctx))
       await api.register(async (scope) => adminRoutes(scope, ctx))
+      await api.register(async (scope) => shareRoutes(scope, ctx))
+      await api.register(async (scope) => publicShareRoutes(scope, ctx))
     },
     { prefix: '/api' }
   )

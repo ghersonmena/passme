@@ -102,6 +102,33 @@ dispositivo: AES-GCM(pinKey, AES-GCM(share, llave de usuario))
   del dispositivo desde el que se cambia). Recuperar la cuenta con la frase los revoca todos.
 - Se rechazan PINs triviales (todos iguales o escaleras).
 
+## Compartir un elemento
+
+Cada compartido tiene su propia llave aleatoria **K** (256 bits). La copia del elemento va cifrada
+con K (AES-256-GCM, AAD `passme:share:<id>`) y K se guarda cifrada dos veces:
+
+- Para el **dueño**, con su llave de usuario (`passme:share-key:<id>:owner`). Así, al editar el
+  elemento, su app vuelve a cifrar la copia con la misma K.
+- Para quien la **recibe**:
+  - **Otra cuenta del servidor**: ECDH P-256 entre una llave efímera nueva y la llave pública de esa
+    cuenta (la que se creó al registrarse). Del secreto compartido sale, con HKDF (que incluye el id
+    del compartido y la llave efímera), la llave que cifra K. Solo la llave privada de esa cuenta,
+    cifrada con su llave de usuario, puede abrirla.
+  - **Enlace para alguien sin cuenta**: el enlace es `/?share=<id>#<secreto>`, con 256 bits al azar
+    después del `#`, que el navegador nunca manda al servidor. Con Argon2id(PIN) y el secreto se
+    derivan, por HKDF, un verificador y la llave que cifra K. El servidor guarda scrypt(verificador),
+    cuenta los intentos antes de comprobarlos (5 PIN equivocados bloquean el enlace) y solo entrega la
+    copia cifrada si el verificador es correcto. Como el verificador depende también del secreto, ni
+    el servidor puede probar PIN por su cuenta: necesitaría el enlace completo.
+
+El servidor guarda a quién se compartió (correo), cuándo, si ya se vio y cuántas veces se abrió el
+enlace, pero no K ni el contenido. El aviso por correo a otra cuenta no lleva nada de la credencial,
+y el enlace para alguien sin cuenta lo manda quien comparte desde su propio correo (si lo mandara el
+servidor, conocería el secreto).
+
+Límites: quien recibe puede copiar la contraseña, así que dejar de compartir no la borra de su
+memoria; conviene cambiarla. Quien tenga el enlace **y** el PIN puede abrirlo mientras no venza.
+
 ## Lo que el servidor sí ve
 
 - Correos, fechas de creación y modificación, cuántos elementos hay en cada bóveda y su tamaño
